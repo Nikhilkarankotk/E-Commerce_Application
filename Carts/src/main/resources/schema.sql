@@ -1,0 +1,12 @@
+CREATE TABLE Cart (
+  cart_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  user_id BIGINT NOT NULL
+);
+
+CREATE TABLE Cart_Items (
+   cart_item_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+   product_id BIGINT NOT NULL,
+   quantity INT NOT NULL,
+   cart_id BIGINT NOT NULL,
+   CONSTRAINT fk_cart FOREIGN KEY (cart_id) REFERENCES Cart(cart_id) ON DELETE CASCADE
+);

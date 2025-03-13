@@ -1,0 +1,21 @@
+# Compiled files
+*.class
+*.jar
+*.war
+*.ear
+
+# Build directories
+/target/
+/bin/
+/build/
+
+# IntelliJ files
+.idea/
+*.iml
+*.iws
+
+# Maven / Gradle
+.mvn/
+.gradle/
+target/
+build/

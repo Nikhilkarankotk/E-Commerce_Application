@@ -3,6 +3,7 @@ package com.nkk.Order.service.Impl;
 import com.nkk.Order.dto.CartDTO;
 import com.nkk.Order.dto.CartItemDTO;
 import com.nkk.Order.dto.OrderDTO;
+import com.nkk.Order.dto.PaymentConfirmationDTO;
 import com.nkk.Order.entity.Order;
 import com.nkk.Order.entity.OrderItem;
 import com.nkk.Order.mapper.OrderMapper;
@@ -88,4 +89,22 @@ public class OrderServiceImpl implements IOrderService {
         Order updatedOrder = orderRepository.save(order);
         return orderMapper.mapToOrderDTO(updatedOrder);
     }
+
+    @Transactional
+    public OrderDTO confirmPayment(Long orderId, PaymentConfirmationDTO paymentConfirmationDTO) {
+        // Fetch the order
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
+        // Update the order status based on payment confirmation
+        if ("SUCCESS".equals(paymentConfirmationDTO.getPaymentStatus())) {
+            order.setOrderStatus("PAYMENT_SUCCESS");
+        } else {
+            order.setOrderStatus("PAYMENT_FAILED");
+        }
+        // Save the updated order
+        Order savedOrder = orderRepository.save(order);
+        // Map to DTO and return
+        return orderMapper.mapToOrderDTO(savedOrder);
+    }
+
 }

@@ -1,6 +1,7 @@
 package com.nkk.Order.service;
 
 import com.nkk.Order.dto.OrderDTO;
+import com.nkk.Order.dto.PaymentConfirmationDTO;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;
@@ -37,5 +38,6 @@ public interface IOrderService {
     OrderDTO updateOrderStatus(Long orderId, String status);
 
 
+    OrderDTO confirmPayment(Long orderId, PaymentConfirmationDTO paymentConfirmationDTO);
 }
 

@@ -1,6 +1,7 @@
 package com.nkk.Order.controller;
 
 import com.nkk.Order.dto.OrderDTO;
+import com.nkk.Order.dto.PaymentConfirmationDTO;
 import com.nkk.Order.service.IOrderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -24,7 +25,7 @@ public class OrderController {
         OrderDTO orderDTO = orderService.getOrderById(orderId);
         return new ResponseEntity<>(orderDTO, HttpStatus.OK);
     }
-    @GetMapping
+    @GetMapping("/{userId}")
     public ResponseEntity<List<OrderDTO>> getOrdersByUserId(@RequestParam Long userId) {
         List<OrderDTO> orderDTOs = orderService.getOrdersByUserId(userId);
         return new ResponseEntity<>(orderDTOs, HttpStatus.OK);
@@ -36,4 +37,12 @@ public class OrderController {
         OrderDTO orderDTO = orderService.updateOrderStatus(orderId, status);
         return new ResponseEntity<>(orderDTO, HttpStatus.OK);
     }
+    @PutMapping("/{orderId}/payment")
+    public ResponseEntity<OrderDTO> confirmPayment(
+            @PathVariable Long orderId,
+            @RequestBody PaymentConfirmationDTO paymentConfirmationDTO) {
+        OrderDTO orderDTO = orderService.confirmPayment(orderId, paymentConfirmationDTO);
+        return new ResponseEntity<>(orderDTO, HttpStatus.OK);
+    }
+
 }

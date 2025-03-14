@@ -1,4 +1,4 @@
-CREATE TABLE Orders (
+CREATE TABLE IF NOT EXISTS Orders (
     order_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL,
     total_amount DOUBLE NOT NULL,
@@ -6,7 +6,7 @@ CREATE TABLE Orders (
     created_at TIMESTAMP NOT NULL
 );
 
-CREATE TABLE Order_Item (
+CREATE TABLE IF NOT EXISTS Order_Item (
      order_item_id BIGINT AUTO_INCREMENT PRIMARY KEY,
      product_id BIGINT NOT NULL,
      quantity INT NOT NULL,

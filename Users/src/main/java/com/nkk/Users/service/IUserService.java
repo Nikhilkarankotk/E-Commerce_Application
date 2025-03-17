@@ -2,6 +2,7 @@ package com.nkk.Users.service;
 
 import com.nkk.Users.dto.RegisterDTO;
 import com.nkk.Users.dto.ResponseDTO;
+import com.nkk.Users.dto.UserDTO;
 
 public interface IUserService {
     /**
@@ -9,12 +10,12 @@ public interface IUserService {
      * @param registerDTO
      * @return
      */
-    ResponseDTO registerUser(RegisterDTO registerDTO);
+    UserDTO registerUser(RegisterDTO registerDTO);
 
     /**
      *
      * @param userId
      * @return
      */
-    ResponseDTO getUserById(Long userId);
+    UserDTO getUserById(Long userId);
 }

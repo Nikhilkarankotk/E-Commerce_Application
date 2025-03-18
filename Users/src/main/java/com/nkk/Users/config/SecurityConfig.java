@@ -28,7 +28,8 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
        http.csrf(AbstractHttpConfigurer::disable)
                .authorizeHttpRequests(authorize ->
-                       authorize.requestMatchers("/users/**","/h2-console/**").permitAll()
+                       authorize.requestMatchers("/users/register","auth/login", "users/reset-password","/users/update-password-with-token", "/h2-console/**").permitAll()
+                               .requestMatchers("/users/update-password","/users/update-password-with-token").authenticated()
                                 .anyRequest().authenticated())
                .sessionManagement(session ->
                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)

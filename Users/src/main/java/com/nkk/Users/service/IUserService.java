@@ -3,6 +3,7 @@ package com.nkk.Users.service;
 import com.nkk.Users.dto.RegisterDTO;
 import com.nkk.Users.dto.ResponseDTO;
 import com.nkk.Users.dto.UserDTO;
+import org.springframework.http.ResponseEntity;
 
 public interface IUserService {
     /**
@@ -18,4 +19,39 @@ public interface IUserService {
      * @return
      */
     UserDTO getUserById(Long userId);
+
+    /**
+     *
+     * @param userId
+     * @param registerDTO
+     * @return
+     */
+    UserDTO updateUser(Long userId, RegisterDTO registerDTO);
+
+    /**
+     *
+     * @param email
+     */
+    void initiatePasswordReset(String email);
+
+    /**
+     *
+     * @param token
+     * @param newPassword
+     */
+    void updatePasswordWithToken(String token, String newPassword);
+
+    /**
+     *
+     * @param token
+     * @param newPassword
+     */
+    void updatePassword(String token, String currentPassword, String newPassword);
+
+    /**
+     *
+     * @param id
+     */
+    void deleteUser(Long id);
+
 }

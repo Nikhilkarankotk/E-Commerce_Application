@@ -24,24 +24,48 @@ public class UserController {
     @Autowired
     private CustomUserDetailsService customUserDetailsService;
 
+    // Register user (exclude email verification)
     @PostMapping("/register")
     public ResponseEntity<UserDTO> registerUser(@RequestBody RegisterDTO registerDTO) {
         UserDTO userDTO = userService.registerUser(registerDTO);
         return new ResponseEntity<>(userDTO, HttpStatus.CREATED);
+    }
+    //update profile
+    @PutMapping("/{id}")
+    public ResponseEntity<UserDTO> updateUser(@PathVariable Long id, @RequestBody RegisterDTO register) {
+        UserDTO updatedUser = userService.updateUser(id,register);
+        return ResponseEntity.ok(updatedUser);
+    }
+
+    // Reset Password
+    @PostMapping("/reset-password")
+    public ResponseEntity<Void> resetPassword(@RequestParam String email) {
+        userService.initiatePasswordReset(email);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/update-password-with-token")
+    public ResponseEntity<Void> updatePasswordWithToken(
+            @RequestParam String token,
+            @RequestParam String newPassword) {
+        userService.updatePasswordWithToken(token, newPassword);
+        return ResponseEntity.ok().build();
+    }
+    // Update Password
+    @PostMapping("/update-password")
+    public ResponseEntity<Void> updatePassword(@RequestHeader("Authorization") String authToken, @RequestParam String currentPassword, @RequestParam String newPassword) {
+        String token = authToken.substring(7).trim(); // Extract and trim the token
+        userService.updatePassword(token, currentPassword, newPassword);
+        return ResponseEntity.ok().build();
     }
     @GetMapping("/{userId}")
     public ResponseEntity<UserDTO> getUserById(@PathVariable Long userId) {
         UserDTO userDTO = userService.getUserById(userId);
         return new ResponseEntity<>(userDTO, HttpStatus.OK);
     }
-    @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody LoginRequest loginRequest) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        loginRequest.getEmail(), loginRequest.getPassword()
-                ));
-        UserDetails userDetails = customUserDetailsService.loadUserByUsername(loginRequest.getEmail());
-        String token = JwtUtil.generateToken(userDetails);
-        return ResponseEntity.ok(token);
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        userService.deleteUser(id);
+        return ResponseEntity.noContent().build();
     }
 }

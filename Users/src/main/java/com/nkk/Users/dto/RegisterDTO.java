@@ -1,5 +1,6 @@
 package com.nkk.Users.dto;
 
+import com.nkk.Users.entity.Role;
 import lombok.Data;
 
 @Data

@@ -14,16 +14,25 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
 @RestController
 @RequestMapping("/users")
 public class UserController {
     @Autowired
     private IUserService userService;
+
     @Autowired
     private AuthenticationManager authenticationManager;
+
     @Autowired
     private CustomUserDetailsService customUserDetailsService;
 
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    // User endpoints
     // Register user (exclude email verification)
     @PostMapping("/register")
     public ResponseEntity<UserDTO> registerUser(@RequestBody RegisterDTO registerDTO) {
@@ -36,7 +45,6 @@ public class UserController {
         UserDTO updatedUser = userService.updateUser(id,register);
         return ResponseEntity.ok(updatedUser);
     }
-
     // Reset Password
     @PostMapping("/reset-password")
     public ResponseEntity<Void> resetPassword(@RequestParam String email) {
@@ -53,11 +61,16 @@ public class UserController {
     }
     // Update Password
     @PostMapping("/update-password")
-    public ResponseEntity<Void> updatePassword(@RequestHeader("Authorization") String authToken, @RequestParam String currentPassword, @RequestParam String newPassword) {
-        String token = authToken.substring(7).trim(); // Extract and trim the token
-        userService.updatePassword(token, currentPassword, newPassword);
+    public ResponseEntity<Void> updatePassword(
+            @RequestHeader("Authorization") String authToken,
+            @RequestParam String currentPassword,
+            @RequestParam String newPassword) {
+        String token= authToken.substring(7).trim(); // Extract and trim the token
+        System.out.println("Received update-password request");
+        userService.updatePassword(token, currentPassword,newPassword);
         return ResponseEntity.ok().build();
     }
+
     @GetMapping("/{userId}")
     public ResponseEntity<UserDTO> getUserById(@PathVariable Long userId) {
         UserDTO userDTO = userService.getUserById(userId);
@@ -67,5 +80,24 @@ public class UserController {
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
         userService.deleteUser(id);
         return ResponseEntity.noContent().build();
+    }
+    // User and Admin endpoints
+    @GetMapping("/profile")
+    public ResponseEntity<UserDTO> getProfile(@RequestHeader("Authorization") String token) {
+        String email = jwtUtil.extractUsername(token.substring(7));
+        UserDTO user = userService.getUserByEmail(email);
+        return ResponseEntity.ok(user);
+    }
+
+    // Admin-only endpoints
+    @PostMapping("/admin/register")
+    public ResponseEntity<UserDTO> registerAdmin(@RequestBody RegisterDTO registerDTO) {
+        UserDTO admin = userService.registerAdmin(registerDTO);
+        return ResponseEntity.ok(admin);
+    }
+    @GetMapping("/admin/all-users")
+    public ResponseEntity<List<UserDTO>> getAllUsers() {
+        List<UserDTO> users = userService.getAllUsers();
+        return ResponseEntity.ok(users);
     }
 }

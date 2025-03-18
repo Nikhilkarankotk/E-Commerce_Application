@@ -27,9 +27,13 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
        http.csrf(AbstractHttpConfigurer::disable)
+//               .csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**")) // Disable CSRF for H2
+//               .headers(headers -> headers.frameOptions(frame -> frame.disable())) // Allow H2 console frames
                .authorizeHttpRequests(authorize ->
-                       authorize.requestMatchers("/users/register","auth/login", "users/reset-password","/users/update-password-with-token", "/h2-console/**").permitAll()
+                       authorize.requestMatchers("/users/register","/users/admin/register","auth/login", "/h2-console/**", "users/reset-password", "/users/update-password-with-token").permitAll()
                                .requestMatchers("/users/update-password","/users/update-password-with-token").authenticated()
+                               .requestMatchers("/users/admin/").hasRole("ADMIN")
+                               .requestMatchers("/users/").hasAnyRole("USER","ADMIN")
                                 .anyRequest().authenticated())
                .sessionManagement(session ->
                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)

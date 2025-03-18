@@ -1,8 +1,5 @@
 package com.nkk.Users.entity;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -17,6 +14,9 @@ public class Users {
     private String username;
     private String email;
     private String password;
-    private String role; // e.g., USER, ADMIN
+
+    @Enumerated(EnumType.STRING)
+    private Role role; // e.g., USER, ADMIN
+
     private LocalDateTime createdAt;
 }

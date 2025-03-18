@@ -4,10 +4,12 @@ import com.nkk.Users.config.CustomUserDetailsService;
 import com.nkk.Users.config.Jwt.JwtUtil;
 import com.nkk.Users.dto.RegisterDTO;
 import com.nkk.Users.dto.UserDTO;
+import com.nkk.Users.entity.Role;
 import com.nkk.Users.entity.Users;
 import com.nkk.Users.mapper.UserMapper;
 import com.nkk.Users.repository.UserRepository;
 import com.nkk.Users.service.IUserService;
+import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -15,6 +17,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class UserServiceImpl implements IUserService {
@@ -29,6 +33,24 @@ public class UserServiceImpl implements IUserService {
     @Autowired
     private CustomUserDetailsService customUserDetailsService;
 
+
+    @PostConstruct
+    public void createAdminUserIfNotExists() {
+        String adminEmail = "admin@example.com";
+        if (!userRepository.existsByEmail(adminEmail)) {
+            Users admin = new Users();
+            admin.setUsername("admin");
+            admin.setEmail(adminEmail);
+            admin.setPassword(passwordEncoder.encode("admin123"));
+            admin.setRole(Role.ADMIN);
+            admin.setCreatedAt(LocalDateTime.now());
+            userRepository.save(admin);
+            System.out.println("Admin user created successfully!");
+        } else {
+            System.out.println("Admin user already exists.");
+        }
+    }
+
     @Transactional
     public UserDTO registerUser(RegisterDTO registerDTO) {
        validatePassword(registerDTO.getPassword());
@@ -38,14 +60,25 @@ public class UserServiceImpl implements IUserService {
         }
         // Create a new user
         Users user = userMapper.mapToUser(registerDTO);
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
         // Hash the password
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
         user.setCreatedAt(LocalDateTime.now());
+        user.setRole(Role.USER);
         // Save the user
         Users savedUser = userRepository.save(user);
         // Map to DTO and return
         return userMapper.mapToUserDTO(savedUser);
     }
+    @Transactional
+    public UserDTO registerAdmin(RegisterDTO registerDTO) {
+        validatePassword(registerDTO.getPassword());
+        Users user = userMapper.mapToUser(registerDTO);
+        user.setPassword(passwordEncoder.encode(registerDTO.getPassword()));
+        user.setRole(Role.ADMIN); // Set role to ADMIN
+        userRepository.save(user);
+        return userMapper.mapToUserDTO(user);
+    }
+
 
     private void validatePassword(String password) {
         if (password.length() < 8) {
@@ -78,11 +111,15 @@ public class UserServiceImpl implements IUserService {
     }
     @Transactional
     public void updatePassword(String token, String currentPassword, String newPassword) {
+        System.out.println("Received update-password request");
         String email = jwtUtil.extractUsername(token);
+        System.out.println("Email extracted from token: " + email);
         Users user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+        System.out.println("User found: " + user.getEmail());
         // Step 3: Validate the current password
         if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            System.out.println("Current password is incorrect");
             throw new RuntimeException("Current password is incorrect");
         }
         validatePassword(newPassword);
@@ -96,6 +133,18 @@ public class UserServiceImpl implements IUserService {
         Users users = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
         return userMapper.mapToUserDTO(users);
+    }
+
+    public UserDTO getUserByEmail(String email) {
+        Users users = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+        return userMapper.mapToUserDTO(users);
+    }
+
+    public List<UserDTO> getAllUsers() {
+        List<Users> users = userRepository.findAll();
+        return users.stream().map(userMapper::mapToUserDTO)
+                .collect(Collectors.toList());
     }
 
     @Transactional

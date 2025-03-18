@@ -5,6 +5,8 @@ import com.nkk.Users.dto.ResponseDTO;
 import com.nkk.Users.dto.UserDTO;
 import org.springframework.http.ResponseEntity;
 
+import java.util.List;
+
 public interface IUserService {
     /**
      *
@@ -15,10 +17,30 @@ public interface IUserService {
 
     /**
      *
+     * @param registerDTO
+     * @return
+     */
+    UserDTO registerAdmin(RegisterDTO registerDTO);
+
+    /**
+     *
      * @param userId
      * @return
      */
     UserDTO getUserById(Long userId);
+
+    /**
+     *
+     * @param email
+     * @return
+     */
+    UserDTO getUserByEmail(String email);
+
+    /**
+     *
+     * @return
+     */
+    List<UserDTO> getAllUsers();
 
     /**
      *

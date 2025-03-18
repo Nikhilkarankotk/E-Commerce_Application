@@ -16,7 +16,7 @@ public class UserMapper {
         userDTO.setUserId(users.getUserId());
         userDTO.setUsername(users.getUsername());
         userDTO.setEmail(users.getEmail());
-        userDTO.setRole(users.getRole());
+        userDTO.setRole(users.getRole().name());
         userDTO.setCreatedAt(users.getCreatedAt());
         return userDTO;
     }
@@ -25,7 +25,6 @@ public class UserMapper {
         users.setUsername(registerDTO.getUsername());
         users.setEmail(registerDTO.getEmail());
         users.setPassword(registerDTO.getPassword());
-        users.setRole("USER");
         users.setCreatedAt(LocalDateTime.now());
         return users;
     }

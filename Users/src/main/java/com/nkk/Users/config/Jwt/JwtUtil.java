@@ -1,5 +1,6 @@
 package com.nkk.Users.config.Jwt;
 
+import com.nkk.Users.entity.Users;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -23,9 +24,9 @@ public class JwtUtil {
     private static final long EXPIRATION_TIME = 864_000_00; // 10 days
 
 
-    public String generateResetToken(String email) {
+    public static String generateRefreshToken(UserDetails userDetails) {
         return Jwts.builder()
-                .setSubject(email)
+                .setSubject(userDetails.getUsername())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + 15 * 60 * 1000)) // 15 minutes
                 .signWith(SECRET_KEY, SignatureAlgorithm.HS256)
@@ -35,14 +36,14 @@ public class JwtUtil {
     public static String generateToken(UserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("roles", userDetails.getAuthorities());
-        return createToken(claims, userDetails.getUsername());
+        return createToken(claims, userDetails.getUsername(),EXPIRATION_TIME);
     }
     public Collection<? extends GrantedAuthority> extractRoles(String token) {
         Claims claims = extractAllClaims(token);
         return (Collection<? extends GrantedAuthority>) claims.get("roles");
     }
 
-    private static String createToken(Map<String, Object> claims, String subject) {
+    private static String createToken(Map<String, Object> claims, String subject,Long EXPIRATION_TIME) {
         return Jwts.builder()
                 .claims()
                 .add(claims)

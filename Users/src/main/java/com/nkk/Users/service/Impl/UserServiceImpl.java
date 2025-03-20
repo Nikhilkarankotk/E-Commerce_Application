@@ -92,7 +92,7 @@ public class UserServiceImpl implements IUserService {
         Users user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
         UserDetails userDetails = customUserDetailsService.loadUserByUsername(email);
-        String resetToken = jwtUtil.generateResetToken(email);
+        String resetToken = jwtUtil.generateRefreshToken(userDetails);
         // For now, just log the reset token (we'll integrate email service later)
         System.out.println("Reset Token: " + resetToken);
     }

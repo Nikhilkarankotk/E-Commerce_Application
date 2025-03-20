@@ -30,7 +30,7 @@ public class SecurityConfig {
 //               .csrf(csrf -> csrf.ignoringRequestMatchers("/h2-console/**")) // Disable CSRF for H2
 //               .headers(headers -> headers.frameOptions(frame -> frame.disable())) // Allow H2 console frames
                .authorizeHttpRequests(authorize ->
-                       authorize.requestMatchers("/users/register","/users/admin/register","auth/login", "/h2-console/**", "users/reset-password", "/users/update-password-with-token").permitAll()
+                       authorize.requestMatchers("/users/register","/users/admin/register", "/h2-console/**", "users/reset-password", "/users/update-password-with-token", "/auth/login", "/auth/refresh-token").permitAll()
                                .requestMatchers("/users/update-password","/users/update-password-with-token").authenticated()
                                .requestMatchers("/users/admin/").hasRole("ADMIN")
                                .requestMatchers("/users/").hasAnyRole("USER","ADMIN")

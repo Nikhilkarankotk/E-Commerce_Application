@@ -9,6 +9,7 @@ import com.nkk.Users.entity.Users;
 import com.nkk.Users.mapper.UserMapper;
 import com.nkk.Users.repository.UserRepository;
 import com.nkk.Users.service.IUserService;
+import com.nkk.Users.service.auditing.AuditLogService;
 import jakarta.annotation.PostConstruct;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +33,8 @@ public class UserServiceImpl implements IUserService {
     private JwtUtil jwtUtil;
     @Autowired
     private CustomUserDetailsService customUserDetailsService;
+    @Autowired
+    private AuditLogService auditLogService;
 
 
     @PostConstruct
@@ -66,6 +69,8 @@ public class UserServiceImpl implements IUserService {
         user.setRole(Role.USER);
         // Save the user
         Users savedUser = userRepository.save(user);
+        //Log the registration
+        auditLogService.logAction("REGISTER", user.getEmail(), "User registered successfully");
         // Map to DTO and return
         return userMapper.mapToUserDTO(savedUser);
     }
@@ -76,6 +81,8 @@ public class UserServiceImpl implements IUserService {
         user.setPassword(passwordEncoder.encode(registerDTO.getPassword()));
         user.setRole(Role.ADMIN); // Set role to ADMIN
         userRepository.save(user);
+        // Log the registration
+        auditLogService.logAction("REGISTER", user.getEmail(), "User registered successfully");
         return userMapper.mapToUserDTO(user);
     }
 

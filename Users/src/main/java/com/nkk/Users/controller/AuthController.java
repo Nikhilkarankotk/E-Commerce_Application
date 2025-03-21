@@ -10,6 +10,7 @@ import com.nkk.Users.entity.Users;
 import com.nkk.Users.repository.UserRepository;
 import com.nkk.Users.service.IUserService;
 import com.nkk.Users.service.RefreshToken.RefreshTokenService;
+import com.nkk.Users.service.auditing.AuditLogService;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,6 +44,10 @@ public class AuthController {
 
     @Autowired
     private CustomUserDetailsService customUserDetailsService;
+
+    @Autowired
+    private AuditLogService auditLogService;
+
 
 //        @PostMapping("/login")
 //    public ResponseEntity<String> login(@RequestBody LoginRequest loginRequest) {
@@ -100,18 +105,12 @@ public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest loginReques
         // Delete the existing refresh token
         refreshTokenService.deleteRefreshToken(existingRefreshToken.getToken());
     }
-
     // Generate a new refresh token
     RefreshToken refreshToken = refreshTokenService.generateRefreshToken(user);
-
+    // Log the login
+    auditLogService.logAction("LOGIN", user.getEmail(), "User logged in successfully");
     // Set the new refresh token in the HTTP-only cookie
-    Cookie cookie = new Cookie("refreshToken", refreshToken.getToken());
-    cookie.setHttpOnly(true);
-    cookie.setSecure(true); // Use HTTPS in production
-    cookie.setPath("/auth/refresh-token");
-    cookie.setMaxAge(7 * 24 * 60 * 60); // 7 days
-    response.addCookie(cookie);
-
+    setRefreshTokenCookie(response, refreshToken.getToken());
     // Return the access token in the response body
     return ResponseEntity.ok(new LoginResponse(JwtUtil.generateToken(userDetails)));
 }
@@ -121,30 +120,41 @@ public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest loginReques
         if (refreshToken == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new LoginResponse("Refresh token not found"));
         }
+        try {
+            // Verify the refresh token
+            RefreshToken verifiedRefreshToken = refreshTokenService.verifyRefreshToken(refreshToken);
+            Users user = verifiedRefreshToken.getUser();
+            UserDetails userDetails = customUserDetailsService.loadUserByUsername(user.getEmail());
+            // Generate new access token
+            String accessToken = jwtUtil.generateToken(userDetails);
 
-        RefreshToken verifiedRefreshToken = refreshTokenService.verifyRefreshToken(refreshToken);
-        Users user = verifiedRefreshToken.getUser();
-        UserDetails userDetails = customUserDetailsService.loadUserByUsername(user.getEmail());
-        // Generate new access token
-        String accessToken = jwtUtil.generateToken(userDetails);
-
-        // Rotate refresh token
-        refreshTokenService.deleteRefreshToken(refreshToken);
-        RefreshToken newRefreshToken = refreshTokenService.generateRefreshToken(user);
-        // Set new refresh token in an HTTP-only cookie
-        Cookie cookie = new Cookie("refreshToken", newRefreshToken.getToken());
+            // Rotate refresh token
+            refreshTokenService.deleteRefreshToken(refreshToken);
+            RefreshToken newRefreshToken = refreshTokenService.generateRefreshToken(user);
+            // Set the new refresh token in the HTTP-only cookie
+            setRefreshTokenCookie(response, newRefreshToken.getToken());
+            return ResponseEntity.ok(new LoginResponse(accessToken));
+        }catch (Exception e){
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new LoginResponse("Invalid refresh token"));
+        }
+    }
+    //Helper method to set refresh token in a cookie
+    private void setRefreshTokenCookie(HttpServletResponse response, String token){
+        Cookie cookie = new Cookie("refreshToken", token);
         cookie.setHttpOnly(true);
         cookie.setSecure(true); // Use HTTPS in production
         cookie.setPath("/auth/refresh-token");
         cookie.setMaxAge(7 * 24 * 60 * 60); // 7 days
         response.addCookie(cookie);
-        return ResponseEntity.ok(new LoginResponse(accessToken));
-
     }
     // Logout
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(@RequestHeader("Authorization") String token) {
-        tokenBlacklist.blacklistToken(token.substring(7)); // Remove "Bearer " prefix
+        String jwtToken = token.substring(7);
+        tokenBlacklist.blacklistToken(jwtToken); // Remove "Bearer " prefix
+        // Log the logout
+        String username = jwtUtil.extractUsername(jwtToken);
+        auditLogService.logAction("LOGOUT", username, "User logged out successfully");
         return ResponseEntity.ok().build();
     }
 }

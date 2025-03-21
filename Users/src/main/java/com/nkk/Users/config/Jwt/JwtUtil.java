@@ -21,26 +21,19 @@ import java.util.function.Function;
 public class JwtUtil {
 
     private static final Key SECRET_KEY = Keys.secretKeyFor(SignatureAlgorithm.HS256); // Generate secure key
-    private static final long EXPIRATION_TIME = 864_000_00; // 10 days
+    private static final long EXPIRATION_TIME = 8_6400_000; // 1 day
+    private static final long REFRESH_TOKEN_EXPIRATION =  17_28_00_000; // 2 days
 
-
-    public static String generateRefreshToken(UserDetails userDetails) {
-        return Jwts.builder()
-                .setSubject(userDetails.getUsername())
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + 15 * 60 * 1000)) // 15 minutes
-                .signWith(SECRET_KEY, SignatureAlgorithm.HS256)
-                .compact();
-    }
 
     public static String generateToken(UserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("roles", userDetails.getAuthorities());
         return createToken(claims, userDetails.getUsername(),EXPIRATION_TIME);
     }
-    public Collection<? extends GrantedAuthority> extractRoles(String token) {
-        Claims claims = extractAllClaims(token);
-        return (Collection<? extends GrantedAuthority>) claims.get("roles");
+
+    public static String generateRefreshToken(UserDetails userDetails){
+        Map<String,Object> claims = new HashMap<>();
+        return createToken(claims, userDetails.getUsername(), REFRESH_TOKEN_EXPIRATION);
     }
 
     private static String createToken(Map<String, Object> claims, String subject,Long EXPIRATION_TIME) {

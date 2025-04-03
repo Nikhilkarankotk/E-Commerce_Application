@@ -25,7 +25,7 @@ public class OrderController {
         OrderDTO orderDTO = orderService.getOrderById(orderId);
         return new ResponseEntity<>(orderDTO, HttpStatus.OK);
     }
-    @GetMapping("/{userId}")
+    @GetMapping("/user/{userId}")
     public ResponseEntity<List<OrderDTO>> getOrdersByUserId(@RequestParam Long userId) {
         List<OrderDTO> orderDTOs = orderService.getOrdersByUserId(userId);
         return new ResponseEntity<>(orderDTOs, HttpStatus.OK);

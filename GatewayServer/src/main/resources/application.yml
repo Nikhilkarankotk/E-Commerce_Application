@@ -1,0 +1,61 @@
+
+spring:
+  application:
+    name: "gatewayserver"
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          #          enabled: true   # enables default discovery of other service
+          enabled: false  # disables default behaviour
+          lowercaseServiceId: true
+  #      httpclient:
+  #        connect-timeout: 1000
+  #        response-timeout: 10s
+  # redis related configs
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          #          downloads certificates during the start-up of the resource server application
+          #          it is going to connect with the resource server and it is going to download all public certificate from
+          #         the keycloak server. using this public certificate my resource server can validate the given token is really issued.
+          #          so all those checks on the access token, it can perform with the help of this public certificate.
+          #          private certificates generate new token, where as the public certificates validates the token.
+          #          copied from same endpoints url
+          jwk-set-uri: "http://localhost:7080/realms/master/protocol/openid-connect/certs"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    gateway:
+      access: unrestricted
+  info:
+    env:
+      enabled: true
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG
+    reactor.netty: DEBUG
+server:
+  port: 9050
+
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    fetchRegistry: true
+    registerWithEureka: true
+    serviceUrl:
+      defaultZone: http://localhost:8070/eureka/
+info:
+  app:
+    name: "Gateway"
+    description: "eCommerce Gateway service"
+    version: "1.0.0"

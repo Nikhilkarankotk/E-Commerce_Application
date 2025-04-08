@@ -50,6 +50,10 @@ public interface IUserService {
      */
     UserDTO updateUser(Long userId, RegisterDTO registerDTO);
 
+    /*
+
+     */
+    Long getUserIdByEmail(String email);
     /**
      *
      * @param email

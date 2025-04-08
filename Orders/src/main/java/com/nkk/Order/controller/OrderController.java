@@ -16,8 +16,8 @@ public class OrderController {
     @Autowired
     private IOrderService orderService;
     @PostMapping("/create")
-    public ResponseEntity<OrderDTO> createOrder(@RequestParam Long userId) {
-        OrderDTO orderDTO = orderService.createOrder(userId);
+    public ResponseEntity<OrderDTO> createOrder(@RequestHeader("Authorization") String token) {
+        OrderDTO orderDTO = orderService.createOrder(token);
         return new ResponseEntity<>(orderDTO, HttpStatus.CREATED);
     }
     @GetMapping("/{orderId}")
@@ -25,9 +25,9 @@ public class OrderController {
         OrderDTO orderDTO = orderService.getOrderById(orderId);
         return new ResponseEntity<>(orderDTO, HttpStatus.OK);
     }
-    @GetMapping("/user/{userId}")
-    public ResponseEntity<List<OrderDTO>> getOrdersByUserId(@RequestParam Long userId) {
-        List<OrderDTO> orderDTOs = orderService.getOrdersByUserId(userId);
+    @GetMapping("/user")
+    public ResponseEntity<List<OrderDTO>> getOrdersByUserId(@RequestHeader("Authorization") String token) {
+        List<OrderDTO> orderDTOs = orderService.getOrdersByUserId(token);
         return new ResponseEntity<>(orderDTOs, HttpStatus.OK);
     }
     @PutMapping("/{orderId}")

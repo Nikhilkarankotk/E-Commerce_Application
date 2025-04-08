@@ -7,23 +7,23 @@ public interface ICartService {
 
     /**
      *
-     * @param userId
+     * @param token
      * @param productId
      * @param quantity
      * @return
      */
-    public CartDTO addToCart(Long userId, Long productId, Integer quantity);
+    public CartDTO addToCart(String token, Long productId, Integer quantity);
 
     /**
      *
-     * @param userId
+     * @param token
      * @return
      */
-    public CartDTO getCartByUserId(Long userId);
+    public CartDTO getCartByUserId(String token);
 
     /**
      *
-     * @param userId
+     * @param token
      */
-    public void clearCart(Long userId);
+    public void clearCart(String token);
 }

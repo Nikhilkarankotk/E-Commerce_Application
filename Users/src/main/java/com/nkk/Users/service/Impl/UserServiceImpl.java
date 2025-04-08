@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -164,6 +165,16 @@ public class UserServiceImpl implements IUserService {
         user.setPassword(registerDTO.getPassword());
         Users updatedUser = userRepository.save(user);
         return userMapper.mapToUserDTO(updatedUser);
+    }
+
+    @Override
+    public Long getUserIdByEmail(String email) {
+        Optional<Users> user= userRepository.findByEmail(email);
+        if(user.isPresent()) {
+           return user.get().getUserId();
+        } else{
+          throw new RuntimeException("User not found with Email: "+ email);
+        }
     }
 
     @Transactional

@@ -10,10 +10,10 @@ public interface IOrderService {
 
     /**
      *
-     * @param userId
+     * @param token
      * @return
      */
-    OrderDTO createOrder(Long userId);
+        OrderDTO createOrder(String token);
 
     /**
      *
@@ -24,10 +24,10 @@ public interface IOrderService {
 
     /**
      *
-     * @param userId
+     * @param token
      * @return
      */
-    List<OrderDTO> getOrdersByUserId(Long userId);
+    List<OrderDTO> getOrdersByUserId(String token);
 
     /**
      *

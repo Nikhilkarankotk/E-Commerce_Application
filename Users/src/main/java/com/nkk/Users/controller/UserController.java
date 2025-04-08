@@ -4,6 +4,7 @@ import com.nkk.Users.config.Jwt.JwtUtil;
 import com.nkk.Users.dto.LoginRequest;
 import com.nkk.Users.dto.RegisterDTO;
 import com.nkk.Users.dto.UserDTO;
+import com.nkk.Users.entity.Users;
 import com.nkk.Users.service.IUserService;
 import com.nkk.Users.config.CustomUserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -69,6 +70,16 @@ public class UserController {
         System.out.println("Received update-password request");
         userService.updatePassword(token, currentPassword,newPassword);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/email")
+    public ResponseEntity<Long> getUserIdByEmail(@RequestParam String email) {
+        Long userId = userService.getUserIdByEmail(email);
+        if(userId != null) {
+            return ResponseEntity.ok(userId);
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
     }
 
     @GetMapping("/{userId}")

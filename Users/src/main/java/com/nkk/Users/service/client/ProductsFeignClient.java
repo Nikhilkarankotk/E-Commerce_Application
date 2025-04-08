@@ -1,4 +1,4 @@
 package com.nkk.Users.service.client;
 
-public interface ProductsFiegnClient {
+public interface ProductsFeignClient {
 }

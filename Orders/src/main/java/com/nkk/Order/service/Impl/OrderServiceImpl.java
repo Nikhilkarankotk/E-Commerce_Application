@@ -11,6 +11,10 @@ import com.nkk.Order.repository.OrderRepository;
 import com.nkk.Order.service.IOrderItemService;
 import com.nkk.Order.service.IOrderService;
 import com.nkk.Order.service.client.CartsFeignClient;
+import com.nkk.Order.service.client.UsersFeignClient;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +22,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.Key;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
@@ -36,10 +42,21 @@ public class OrderServiceImpl implements IOrderService {
     private IOrderItemService orderItemService;
     @Autowired
     private OrderMapper orderMapper;
+    @Autowired
+    private UsersFeignClient usersFeignClient;
+
+    private static final String SECRET_KEY = "MySuperSecretKeyThatShouldBeVeryLong";
+    public static Key getSigningKey() {
+        return Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
+    }
+
     @Transactional
-    public OrderDTO createOrder(Long userId) {
+        public OrderDTO createOrder(String token) {
+        // Extract the user ID from the token
+        String email = extractEmailFromToken(token);
+        Long userId = usersFeignClient.getUserIdByEmail(email).getBody();
         // Step 1: Fetch the cart for the user
-        CartDTO cartDTO = cartsFeignClient.getCartByUserId(userId);
+        CartDTO cartDTO = cartsFeignClient.getCartByUserId(token);
 //       logger.info("CartDto data info: {}",cartDTO);
         // Step 2: Create an order from the cart
         Order order = new Order();
@@ -75,7 +92,9 @@ public class OrderServiceImpl implements IOrderService {
                 .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
         return orderMapper.mapToOrderDTO(order);
     }
-    public List<OrderDTO> getOrdersByUserId(Long userId) {
+    public List<OrderDTO> getOrdersByUserId(String token) {
+        String email = extractEmailFromToken(token);
+        Long userId = usersFeignClient.getUserIdByEmail(email).getBody();
         List<Order> orders = orderRepository.findByUserId(userId);
         return orders.stream()
                 .map(orderMapper::mapToOrderDTO)
@@ -105,6 +124,15 @@ public class OrderServiceImpl implements IOrderService {
         Order savedOrder = orderRepository.save(order);
         // Map to DTO and return
         return orderMapper.mapToOrderDTO(savedOrder);
+    }
+    private String extractEmailFromToken(String token) {
+        String jwtToken = token.substring(7); // Extract token from "Bearer " prefix
+        Claims claims = Jwts.parser()
+                .setSigningKey(getSigningKey())
+                .build()
+                .parseClaimsJws(jwtToken)
+                .getBody();
+        return claims.getSubject();
     }
 
 }

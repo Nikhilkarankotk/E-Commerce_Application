@@ -2,7 +2,6 @@ package com.nkk.Cart.controller;
 
 import com.nkk.Cart.Dto.CartDTO;
 import com.nkk.Cart.service.ICartService;
-import com.nkk.Cart.entity.Cart;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,20 +16,20 @@ public class CartController {
 
     @PostMapping("/create")
     public CartDTO addToCart(
-            @RequestParam Long userId,
+            @RequestHeader("Authorization") String token,
             @RequestParam Long productId,
             @RequestParam Integer quantity) {
-        return cartService.addToCart(userId, productId, quantity);
+        return cartService.addToCart(token, productId, quantity);
     }
 
-    @GetMapping("/{userId}")
-    public CartDTO getCartByUserId(@PathVariable Long userId) {
-        return cartService.getCartByUserId(userId);
+    @GetMapping
+    public CartDTO getCartByUserId(@RequestHeader("Authorization") String token) {
+        return cartService.getCartByUserId(token);
     }
 
     @DeleteMapping("/{userId}")
-    public ResponseEntity<Void> clearCart(@PathVariable Long userId) {
-        cartService.clearCart(userId);
+    public ResponseEntity<Void> clearCart(@RequestHeader("Authorization") String token) {
+        cartService.clearCart(token);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 }

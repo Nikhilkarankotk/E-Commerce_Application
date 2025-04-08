@@ -9,25 +9,38 @@ import com.nkk.Cart.repository.CartRepository;
 import com.nkk.Cart.service.ICartItemService;
 import com.nkk.Cart.service.ICartService;
 import com.nkk.Cart.service.client.ProductsFeignClient;
+import com.nkk.Cart.service.client.UsersFeignClient;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
+import java.security.Key;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
 public class CartServiceImpl implements ICartService {
 
-//    private static final Logger logger = LoggerFactory.getLogger(CartServiceImpl.class);
+    private static final Logger logger = LoggerFactory.getLogger(CartServiceImpl.class);
+
 
     private final CartRepository cartRepository;
     private final ICartItemService cartItemService;
     private final CartMapper cartMapper;
     private final ProductsFeignClient productsFeignClient;
+    private static final String SECRET_KEY = "MySuperSecretKeyThatShouldBeVeryLong";
+
+    public static Key getSigningKey() {
+        return Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
+    }
+   @Autowired
+   private UsersFeignClient usersFeignClient;
 
     @Autowired
     public CartServiceImpl(CartRepository cartRepository, ICartItemService cartItemService, CartMapper cartMapper, ProductsFeignClient productsFeignClient) {
@@ -38,7 +51,10 @@ public class CartServiceImpl implements ICartService {
     }
 
     @Transactional
-    public CartDTO addToCart(Long userId, Long productId, Integer quantity) {
+    public CartDTO addToCart(String token, Long productId, Integer quantity) {
+        String email = extractEmailFromToken(token);
+        logger.info("Email: {}", email);
+        Long userId = usersFeignClient.getUserIdByEmail(email).getBody();
         // Fetch or create cart for the user
         Cart cart = (Cart) cartRepository.findByUserId(userId).orElseGet(() -> {
             Cart newCart = new Cart();
@@ -52,7 +68,13 @@ public class CartServiceImpl implements ICartService {
         // Return the cart as a DTO
         return cartItemService.toCartDTOWithProductDetails(savedCart);
     }
-    public CartDTO getCartByUserId(Long userId) {
+
+
+
+    public CartDTO getCartByUserId(String token) {
+        // Extract the user ID from the token
+        String email = extractEmailFromToken(token);
+        Long userId = usersFeignClient.getUserIdByEmail(email).getBody();
         // Step 1: Fetch the cart
         Cart cart = (Cart) cartRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Cart not found for user: " + userId));
@@ -86,9 +108,22 @@ public class CartServiceImpl implements ICartService {
         return cartDTO;
     }
     @Transactional
-    public void clearCart(Long userId) {
+    public void clearCart(String token) {
+        // Extract the user ID from the token
+        String email = extractEmailFromToken(token);
+        Long userId = usersFeignClient.getUserIdByEmail(email).getBody();
         Cart cart = (Cart) cartRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Cart not found for user: " + userId));
         cartRepository.delete(cart);
+    }
+
+    private String extractEmailFromToken(String token) {
+        String jwtToken = token.substring(7); // Extract token from "Bearer " prefix
+        Claims claims = Jwts.parser()
+                .setSigningKey(getSigningKey())
+                .build()
+                .parseClaimsJws(jwtToken)
+                .getBody();
+        return claims.getSubject();
     }
 }

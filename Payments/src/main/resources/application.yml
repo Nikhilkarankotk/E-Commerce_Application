@@ -1,8 +1,8 @@
 server:
-  port: 9010
+  port: 9030
 spring:
   application:
-    name: "Orders"
+    name: "Payments"
   datasource:
     url: jdbc:h2:mem:testdb
     driver-class-name: org.h2.Driver
@@ -36,18 +36,16 @@ management:
 #        binder:
 #          brokers: localhost:9092
 
-
-
 eureka:
   instance:
     prefer-ip-address: true
   client:
-    fetch-registry: true
-    register-with-eureka: true
-    service-url:
-      defaultZone: http://localhost:8070/eureka
+    fetchRegistry: true
+    registerWithEureka: true
+    serviceUrl:
+      defaultZone: http://localhost:8070/eureka/
 info:
   app:
-    name: "Orders Service"
-    description: "eCommerce Orders Service"
+    name: "Payments"
+    description: "eCommerce Payments service"
     version: "1.0.0"

@@ -1,9 +1,6 @@
 package com.nkk.Order.service.Impl;
 
-import com.nkk.Order.dto.CartDTO;
-import com.nkk.Order.dto.CartItemDTO;
-import com.nkk.Order.dto.OrderDTO;
-import com.nkk.Order.dto.PaymentConfirmationDTO;
+import com.nkk.Order.dto.*;
 import com.nkk.Order.entity.Order;
 import com.nkk.Order.entity.OrderItem;
 import com.nkk.Order.mapper.OrderMapper;
@@ -11,13 +8,16 @@ import com.nkk.Order.repository.OrderRepository;
 import com.nkk.Order.service.IOrderItemService;
 import com.nkk.Order.service.IOrderService;
 import com.nkk.Order.service.client.CartsFeignClient;
+import com.nkk.Order.service.client.MessagingFeignClient;
 import com.nkk.Order.service.client.UsersFeignClient;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import org.aspectj.weaver.ast.Var;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,8 +44,14 @@ public class OrderServiceImpl implements IOrderService {
     private OrderMapper orderMapper;
     @Autowired
     private UsersFeignClient usersFeignClient;
+    @Autowired
+    private StreamBridge streamBridge;
+
+    private static final Logger logger = LoggerFactory.getLogger(OrderServiceImpl.class);
 
     private static final String SECRET_KEY = "MySuperSecretKeyThatShouldBeVeryLong";
+
+
     public static Key getSigningKey() {
         return Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
     }
@@ -67,12 +73,6 @@ public class OrderServiceImpl implements IOrderService {
         // Step 3: Map cart items to order items
 //        logger.info("Order details: {}",order);
         for (CartItemDTO cartItemDTO : cartDTO.getItems()) {
-//            orderItemService.createOrderItem(
-//                    order,
-//                    cartItemDTO.getProductId(),
-//                    cartItemDTO.getQuantity(),
-//                    cartItemDTO.getProductPrice()
-//            );
             OrderItem orderItem = new OrderItem();
             orderItem.setProductId(cartItemDTO.getProductId());
             orderItem.setQuantity(cartItemDTO.getQuantity());
@@ -82,8 +82,11 @@ public class OrderServiceImpl implements IOrderService {
         }
         // Save the order
         Order savedOrder = orderRepository.save(order);
-//        logger.info("savedOrder from order: {}",savedOrder);
-        // Step 6: Clear the cart (optional)
+//        // Publish "Order Created" event
+//        OrderEvent orderEvent = new OrderEvent();
+//        orderEvent.setOrderId(savedOrder.getOrderId());
+//        orderEvent.setTotalAmount(savedOrder.getTotalAmount());
+//        streamBridge.send("orderCreated-out-0", orderEvent);
         // Step 7: Return the order DTO
         return orderMapper.mapToOrderDTO(savedOrder);
     }

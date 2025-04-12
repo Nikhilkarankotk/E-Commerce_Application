@@ -1,0 +1,26 @@
+server:
+  port: 9060
+
+spring:
+  application:
+    name: "Message"
+  cloud:
+    function:
+      definition: orderCreated
+    stream:
+      bindings:
+        orderCreated-in-0:
+          destination: order-created
+          group: ${spring.application.name}
+#        paymentProcessed-in-0:
+#          destination: payment-confirmed
+#          group: ${spring.application.name}
+      kafka:
+        binder:
+          brokers:
+            - "localhost:9092"
+
+logging:
+  level:
+    root: INFO
+    com.nkk.Message: DEBUG

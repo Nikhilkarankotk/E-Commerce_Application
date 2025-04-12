@@ -7,6 +7,7 @@ import com.nkk.Payments.entity.Payment;
 import com.nkk.Payments.mapper.PaymentMapper;
 import com.nkk.Payments.repository.PaymentRepository;
 import com.nkk.Payments.service.IPaymentService;
+import com.nkk.Payments.service.client.MessagingFeignClient;
 import com.nkk.Payments.service.client.OrderFeignClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -22,6 +23,10 @@ public class PaymentServiceImpl implements IPaymentService {
     private PaymentMapper paymentMapper;
     @Autowired
     private OrderFeignClient orderFeignClient;
+    @Autowired
+    private MessagingFeignClient messagingFeignClient;
+//    @Autowired
+//    private StreamBridge streamBridge;
     @Transactional
     public PaymentDTO processPayment(Long orderId, double amount, String paymentMethod) {
         // Fetch order details
@@ -46,6 +51,11 @@ public class PaymentServiceImpl implements IPaymentService {
         paymentConfirmationDTO.setPaymentStatus(paymentStatus);
         paymentConfirmationDTO.setPaymentTimestamp(LocalDateTime.now());
         orderFeignClient.confirmPayment(orderId, paymentConfirmationDTO);
+        // Publish "Payment Confirmed" event via Messaging Service
+//        PaymentConfirmedEvent paymentConfirmedEvent = new PaymentConfirmedEvent();
+//        paymentConfirmedEvent.setOrderId(orderId);
+//        paymentConfirmedEvent.setStatus(paymentStatus);
+//        streamBridge.send("paymentConfirmed-out-0", paymentConfirmedEvent);
         // Map to DTO and return
         return paymentMapper.mapToPaymentDTO(savedPayment);
     }

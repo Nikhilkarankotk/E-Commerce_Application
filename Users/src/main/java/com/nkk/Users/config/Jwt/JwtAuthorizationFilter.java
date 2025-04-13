@@ -16,6 +16,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+import static com.nkk.Users.constants.UserConstants.HEADER_AUTHORIZATION;
+import static com.nkk.Users.constants.UserConstants.TOKEN_PREFIX;
+
 @Component
 public class JwtAuthorizationFilter extends OncePerRequestFilter {
 
@@ -34,10 +37,10 @@ public class JwtAuthorizationFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        String authHeader = request.getHeader("Authorization");
+        String authHeader = request.getHeader(HEADER_AUTHORIZATION);
         String username = null;
         String token = null;
-        if(authHeader != null && authHeader.startsWith("Bearer ")){
+        if(authHeader != null && authHeader.startsWith(TOKEN_PREFIX)){
             token = authHeader.substring(7);
             username = jwtUtil.extractUsername(token);
             // Check if the token is blacklisted

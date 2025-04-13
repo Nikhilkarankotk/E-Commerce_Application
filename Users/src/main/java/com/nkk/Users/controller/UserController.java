@@ -1,19 +1,16 @@
 package com.nkk.Users.controller;
 
 import com.nkk.Users.config.Jwt.JwtUtil;
-import com.nkk.Users.dto.LoginRequest;
+import com.nkk.Users.constants.UserConstants;
 import com.nkk.Users.dto.RegisterDTO;
 import com.nkk.Users.dto.UserDTO;
-import com.nkk.Users.entity.Users;
 import com.nkk.Users.service.IUserService;
 import com.nkk.Users.config.CustomUserDetailsService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -36,13 +33,13 @@ public class UserController {
     // User endpoints
     // Register user (exclude email verification)
     @PostMapping("/register")
-    public ResponseEntity<UserDTO> registerUser(@RequestBody RegisterDTO registerDTO) {
+    public ResponseEntity<UserDTO> registerUser(@Valid @RequestBody RegisterDTO registerDTO) {
         UserDTO userDTO = userService.registerUser(registerDTO);
         return new ResponseEntity<>(userDTO, HttpStatus.CREATED);
     }
     //update profile
     @PutMapping("/{id}")
-    public ResponseEntity<UserDTO> updateUser(@PathVariable Long id, @RequestBody RegisterDTO register) {
+    public ResponseEntity<UserDTO> updateUser(@PathVariable Long id, @Valid @RequestBody RegisterDTO register) {
         UserDTO updatedUser = userService.updateUser(id,register);
         return ResponseEntity.ok(updatedUser);
     }

@@ -3,11 +3,13 @@ package com.nkk.Products.service.impl;
 import com.nkk.Products.dto.ProductDTO;
 import com.nkk.Products.entity.Category;
 import com.nkk.Products.entity.Product;
+import com.nkk.Products.exception.ResourceAlreadyExistsException;
+import com.nkk.Products.exception.ResourceNotFoundException;
+import com.nkk.Products.exception.PriceStockValidationException;
 import com.nkk.Products.mapper.ProductMapper;
 import com.nkk.Products.repository.ProductRepository;
 import com.nkk.Products.service.ICategoryService;
 import com.nkk.Products.service.IProductService;
-import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -36,7 +38,7 @@ public class ProductServiceImpl implements IProductService {
     }
     public ProductDTO getProductById(Long id) {
         Product product = productRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Product not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Product", "id", id));
         return productMapper.mapToProductDTO(product);
     }
     @Transactional
@@ -45,7 +47,12 @@ public class ProductServiceImpl implements IProductService {
         //fetch the category from the database
         Category category = categoryService.getCategoryById(productDTO.getCategoryId());
         if (category == null) {
-            throw new RuntimeException("Category not found with id: " + productDTO.getCategoryId());
+            throw new ResourceNotFoundException("Category", "id", productDTO.getCategoryId());
+        }
+        // Check if product already exists with same name in the same category
+        if (productRepository.existsByNameAndCategory_CategoryId(productDTO.getName(), productDTO.getCategoryId())) {
+            throw new ResourceAlreadyExistsException("Product already exists with name: "
+                    + productDTO.getName() + " in category ID: " + productDTO.getCategoryId());
         }
         product.setCategory(category);
         validateProduct(product);
@@ -55,7 +62,7 @@ public class ProductServiceImpl implements IProductService {
     @Transactional
     public ProductDTO updateProduct(Long id, ProductDTO productDTO) {
         Product existingProduct = productRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Product not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Product", "id", id ));
         Product updatedProduct = productMapper.mapToProduct(productDTO);
         existingProduct.setName(updatedProduct.getName());
         existingProduct.setDescription(updatedProduct.getDescription());
@@ -71,17 +78,17 @@ public class ProductServiceImpl implements IProductService {
         productRepository.deleteById(id);
     }
     private void validateProduct(Product product) {
+        if (product.getStockQuantity() <= 0) {
+            throw new PriceStockValidationException("Stock quantity cannot be negative or zero");
+        }
         if (product.getPrice() <= 0) {
-            throw new RuntimeException("Price must be greater than 0");
+            throw new PriceStockValidationException("Price must be greater than 0");
         }
-        if (product.getStockQuantity() < 0) {
-            throw new RuntimeException("Stock quantity cannot be negative");
-        }
-        if (product.getName() == null || product.getName().isEmpty()) {
-            throw new RuntimeException("Product name is required");
+        if (product.getName() == null || product.getName().trim().isEmpty() || product.getDescription() == null || product.getDescription().trim().isEmpty()) {
+            throw new PriceStockValidationException("Product name is required and description is required");
         }
         if (product.getCategory() == null) {
-            throw new RuntimeException("Product category is required");
+            throw new PriceStockValidationException("Product category is required");
         }
     }
 
@@ -89,7 +96,7 @@ public class ProductServiceImpl implements IProductService {
     public ProductDTO updateProductStock(ProductDTO productDTO) {
         // Fetch the product by ID
         Product product = productRepository.findById(productDTO.getProductId())
-                .orElseThrow(() -> new RuntimeException("Product not found with id: " + productDTO.getProductId()));
+                .orElseThrow(() -> new ResourceNotFoundException("Product", "id", productDTO.getProductId()));
         // Update the stock quantity
         int updatedStock = product.getStockQuantity() + productDTO.getStockQuantity();
         product.setStockQuantity(updatedStock);

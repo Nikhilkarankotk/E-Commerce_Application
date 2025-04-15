@@ -3,12 +3,13 @@ package com.nkk.Order.service.Impl;
 import com.nkk.Order.dto.*;
 import com.nkk.Order.entity.Order;
 import com.nkk.Order.entity.OrderItem;
+import com.nkk.Order.exception.ResourceNotFoundException;
 import com.nkk.Order.mapper.OrderMapper;
 import com.nkk.Order.repository.OrderRepository;
 import com.nkk.Order.service.IOrderItemService;
 import com.nkk.Order.service.IOrderService;
 import com.nkk.Order.service.client.CartsFeignClient;
-import com.nkk.Order.service.client.MessagingFeignClient;
+//import com.nkk.Order.service.client.MessagingFeignClient;
 import com.nkk.Order.service.client.UsersFeignClient;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -17,7 +18,6 @@ import org.aspectj.weaver.ast.Var;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,8 +44,8 @@ public class OrderServiceImpl implements IOrderService {
     private OrderMapper orderMapper;
     @Autowired
     private UsersFeignClient usersFeignClient;
-    @Autowired
-    private StreamBridge streamBridge;
+//    @Autowired
+//    private StreamBridge streamBridge;
 
     private static final Logger logger = LoggerFactory.getLogger(OrderServiceImpl.class);
 
@@ -92,7 +92,7 @@ public class OrderServiceImpl implements IOrderService {
     }
     public OrderDTO getOrderById(Long orderId) {
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
+                .orElseThrow(() -> new ResourceNotFoundException("Order", "id", orderId));
         return orderMapper.mapToOrderDTO(order);
     }
     public List<OrderDTO> getOrdersByUserId(String token) {
@@ -106,7 +106,7 @@ public class OrderServiceImpl implements IOrderService {
     @Transactional
     public OrderDTO updateOrderStatus(Long orderId, String status) {
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
+                .orElseThrow(() -> new ResourceNotFoundException("Order", "id", orderId));
         order.setOrderStatus(status);
         Order updatedOrder = orderRepository.save(order);
         return orderMapper.mapToOrderDTO(updatedOrder);
@@ -116,7 +116,7 @@ public class OrderServiceImpl implements IOrderService {
     public OrderDTO confirmPayment(Long orderId, PaymentConfirmationDTO paymentConfirmationDTO) {
         // Fetch the order
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
+                .orElseThrow(() -> new ResourceNotFoundException("Order", "id", orderId));
         // Update the order status based on payment confirmation
         if ("SUCCESS".equals(paymentConfirmationDTO.getPaymentStatus())) {
             order.setOrderStatus("PAYMENT_SUCCESS");

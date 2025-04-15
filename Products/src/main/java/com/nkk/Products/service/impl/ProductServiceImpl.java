@@ -37,9 +37,14 @@ public class ProductServiceImpl implements IProductService {
                 .collect(Collectors.toList());
     }
     public ProductDTO getProductById(Long id) {
+        return productRepository.findById(id)
+                .map(ProductMapper::mapToProductDTO)
+                .orElseThrow(() -> new ResourceNotFoundException("Product", "id", id));
+    }
+    public Integer getProductByStock(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product", "id", id));
-        return productMapper.mapToProductDTO(product);
+        return product.getStockQuantity();
     }
     @Transactional
     public ProductDTO addProduct(ProductDTO productDTO) {

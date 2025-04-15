@@ -4,6 +4,9 @@ import com.nkk.Cart.Dto.CartDTO;
 import com.nkk.Cart.Dto.CartItemDTO;
 import com.nkk.Cart.Dto.ProductDTO;
 import com.nkk.Cart.entity.Cart;
+import com.nkk.Cart.entity.CartItem;
+import com.nkk.Cart.exception.InsufficientStockException;
+import com.nkk.Cart.exception.ResourceNotFoundException;
 import com.nkk.Cart.mapper.CartMapper;
 import com.nkk.Cart.repository.CartRepository;
 import com.nkk.Cart.service.ICartItemService;
@@ -55,12 +58,27 @@ public class CartServiceImpl implements ICartService {
         String email = extractEmailFromToken(token);
         logger.info("Email: {}", email);
         Long userId = usersFeignClient.getUserIdByEmail(email).getBody();
+        Integer stockQuantity = productsFeignClient.getProductByStock(productId);
+        if (quantity > stockQuantity) {
+            throw new InsufficientStockException("Insufficient stock for product: " + productId);
+        }
         // Fetch or create cart for the user
         Cart cart = (Cart) cartRepository.findByUserId(userId).orElseGet(() -> {
             Cart newCart = new Cart();
             newCart.setUserId(userId);
             return cartRepository.save(newCart);
         });
+        // Calculate total quantity of the product
+        int totalQuantity = cart.getItems().stream()
+                .filter(item -> item.getProductId().equals(productId))
+                        .mapToInt(CartItem::getQuantity)
+                                .sum();
+        //Validate the total quantity in the cart plus the requested quantity exceeds the stock quantity
+        if(totalQuantity + quantity > stockQuantity){
+            throw new RuntimeException("Insufficient stock for product: " + productId +"   "+
+                    "Available stock: " + stockQuantity+"    "+
+                    "Requested quantity: " + (totalQuantity+quantity));
+        }
         // Add or update item in the cart
         cartItemService.addOrUpdateItem(cart, productId, quantity);
         // Save the updated cart
@@ -77,7 +95,7 @@ public class CartServiceImpl implements ICartService {
         Long userId = usersFeignClient.getUserIdByEmail(email).getBody();
         // Step 1: Fetch the cart
         Cart cart = (Cart) cartRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Cart not found for user: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("Cart", "userId", userId));
         // Step 2: Map the cart to a DTO
         CartDTO cartDTO = new CartDTO();
         cartDTO.setCartId(cart.getCartId());
@@ -113,7 +131,7 @@ public class CartServiceImpl implements ICartService {
         String email = extractEmailFromToken(token);
         Long userId = usersFeignClient.getUserIdByEmail(email).getBody();
         Cart cart = (Cart) cartRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Cart not found for user: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("Cart", "userId", userId));
         cartRepository.delete(cart);
     }
 

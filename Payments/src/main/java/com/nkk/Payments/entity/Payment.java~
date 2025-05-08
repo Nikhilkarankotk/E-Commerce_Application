@@ -1,0 +1,16 @@
+package com.nkk.Payments.entity;
+
+import javax.persistence.*;
+import java.time.LocalDateTime;
+@Entity
+public class Payment {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long paymentId;
+    private Long orderId;
+    private double amount;
+    private String paymentMethod; // e.g., CREDIT_CARD, PAYPAL
+    private String status; // e.g., SUCCESS, FAILED
+    private LocalDateTime createdAt;
+    // Getters and Setters
+}

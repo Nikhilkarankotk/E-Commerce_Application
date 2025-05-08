@@ -1,0 +1,76 @@
+server:
+  port: 9040
+spring:
+  application:
+    name: "Users"
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ''
+  h2:
+    console:
+      enabled: true
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  info:
+    env:
+      enabled: true
+
+eureka:
+  instance:
+    prefer-ip-address: true
+  client:
+    fetchRegistry: true
+    registerWithEureka: true
+    serviceUrl:
+      defaultZone: http://localhost:8070/eureka/
+info:
+  app:
+    name: "Users"
+    description: "eCommerce Users service"
+    version: "1.0.0"
+
+
+
+logging:
+  level:
+    org:
+      springframework:
+        security: DEBUG
+        web: DEBUG
+
+
+  redis:
+    port: 6379
+    host: localhost
+
+twilio:
+  account:
+    sid: AC76b9f2db7f6311bf2199c8fd2833ec80
+  auth:
+    token: 18ee80f0d950253db9c5106b4cf65d10
+  phone:
+    number: +18564853822
+
+
+#  mail:
+#    host: smtp.gmail.com
+#    port: 587
+#    username: nikhilkumarkarankot@gmail.com
+#    password: kxjh qnqa gvco ohrv
+#    properties:
+#      mail:
+#        smtp:
+#          auth: true
+#          starttls:
+#            enable: true

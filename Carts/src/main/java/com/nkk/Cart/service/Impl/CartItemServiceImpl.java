@@ -5,11 +5,13 @@ import com.nkk.Cart.Dto.CartItemDTO;
 import com.nkk.Cart.Dto.ProductDTO;
 import com.nkk.Cart.entity.Cart;
 import com.nkk.Cart.entity.CartItem;
+import com.nkk.Cart.exception.InsufficientStockException;
 import com.nkk.Cart.service.ICartItemService;
 import com.nkk.Cart.service.client.ProductsFeignClient;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
+import javax.naming.InsufficientResourcesException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -29,7 +31,7 @@ public class CartItemServiceImpl implements ICartItemService {
         ProductDTO product = productsFeignClient.getProductById(productId);
         // Check product stock availability
         if (product.getStockQuantity() < quantity) {
-            throw new RuntimeException("Insufficient stock for product: " + product.getName());
+            throw new InsufficientStockException("Insufficient stock for product: " + product.getName());
         }
         // Add or update item in the cart
         Optional<CartItem> existingItem = cart.getItems().stream()

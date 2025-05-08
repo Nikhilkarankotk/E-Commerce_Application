@@ -1,0 +1,4 @@
+package com.nkk.Payments.dto;
+
+public class ErrorResponseDTO {
+}

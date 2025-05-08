@@ -49,3 +49,6 @@ info:
     name: "Payments"
     description: "eCommerce Payments service"
     version: "1.0.0"
+
+stripe:
+  secret-key : ${STRIPE_SECRET_KEY}

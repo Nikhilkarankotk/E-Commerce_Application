@@ -56,6 +56,12 @@
 			<artifactId>h2</artifactId>
 			<scope>runtime</scope>
 		</dependency>
+		<dependency>
+			<groupId>com.stripe</groupId>
+			<artifactId>stripe-java</artifactId>
+			<version>24.23.0-beta.1</version>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/com.paypal.sdk/paypal-core -->
 <!--		<dependency>-->
 <!--			<groupId>org.springframework.cloud</groupId>-->
 <!--			<artifactId>spring-cloud-stream</artifactId>-->

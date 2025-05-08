@@ -1,9 +1,7 @@
 package com.nkk.Users.service;
 
 import com.nkk.Users.dto.RegisterDTO;
-import com.nkk.Users.dto.ResponseDTO;
 import com.nkk.Users.dto.UserDTO;
-import org.springframework.http.ResponseEntity;
 
 import java.util.List;
 

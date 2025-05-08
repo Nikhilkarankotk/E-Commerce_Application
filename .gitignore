@@ -8,6 +8,7 @@
 /target/
 /bin/
 /build/
+/resources/application.yml
 
 # IntelliJ files
 .idea/
@@ -19,3 +20,7 @@
 .gradle/
 target/
 build/
+
+.env
+application.yml
+config/secrets.yml

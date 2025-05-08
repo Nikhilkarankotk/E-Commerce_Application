@@ -22,10 +22,16 @@ public interface IProductService {
 
     /**
      *
-     * @param productDTO
+     * @param id
      * @return
-     *
      */
+    Integer getProductByStock(Long id);
+        /**
+         *
+         * @param productDTO
+         * @return
+         *
+         */
     ProductDTO addProduct(ProductDTO productDTO);
 
     /**

@@ -1,0 +1,150 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Stripe_Token_Generator</title>
+  <script src="https://js.stripe.com/v3/"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(to right, #667eea, #764ba2);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      color: #333;
+    }
+
+    .container {
+      background-color: #fff;
+      padding: 30px 40px;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+      width: 100%;
+      max-width: 420px;
+      animation: fadeIn 0.4s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h2 {
+      margin-top: 0;
+      margin-bottom: 20px;
+      font-size: 24px;
+      text-align: center;
+      color: #444;
+    }
+
+    #card-element {
+      margin-bottom: 20px;
+      padding: 12px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      background-color: #fafafa;
+    }
+
+    button {
+      width: 100%;
+      background-color: #5cb85c;
+      color: white;
+      padding: 14px;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    button:hover {
+      background-color: #4cae4c;
+    }
+
+    #token-result {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 6px;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 13px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 200px;
+      overflow-y: auto;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .neutral {
+      background-color: #f1f3f5;
+      color: #333;
+      border: 1px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h2>Stripe Test-Token</h2>
+  <form id="payment-form">
+    <div id="card-element"></div>
+    <button type="submit">Generate Test Token</button>
+  </form>
+  <pre id="token-result" class="neutral"></pre>
+</div>
+
+<script>
+  const stripe = Stripe("pk_test_51REBtgFa1eW0LGEiEVhZLcWdfNSzhG9ZEp4MWeRswBMFx4N6QAVRwjm83bg4bnaLwPHRWT9e1LV6sLmBIHrVTkU600XMg8cgCT"); // Replace with your real test key
+  const elements = stripe.elements();
+  const card = elements.create("card", { hidePostalCode: true });
+  card.mount("#card-element");
+
+  const form = document.getElementById("payment-form");
+  const resultDisplay = document.getElementById("token-result");
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    resultDisplay.textContent = "⏳ Generating token...";
+    resultDisplay.className = "neutral";
+
+    const { token, error } = await stripe.createToken(card);
+
+    if (error) {
+      resultDisplay.textContent = `❌ Error: ${error.message}`;
+      resultDisplay.className = "error";
+    } else {
+      const simplifiedToken = {
+        tokenId: token.id,
+        cardBrand: token.card.brand,
+        cardLast4: token.card.last4,
+        expMonth: token.card.exp_month,
+        expYear: token.card.exp_year
+      };
+
+      resultDisplay.textContent = `✅ Token generated:\n${JSON.stringify(simplifiedToken, null, 2)}`;
+      resultDisplay.className = "success";
+      console.log("Full Token Object:", token); // Still logs the full object for debugging if needed
+    }
+  });
+</script>
+</body>
+</html>

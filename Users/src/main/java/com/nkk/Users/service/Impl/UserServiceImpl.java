@@ -6,6 +6,8 @@ import com.nkk.Users.dto.RegisterDTO;
 import com.nkk.Users.dto.UserDTO;
 import com.nkk.Users.entity.Role;
 import com.nkk.Users.entity.Users;
+import com.nkk.Users.exception.ResourceNotFoundException;
+import com.nkk.Users.exception.UserAlreadyExistsException;
 import com.nkk.Users.mapper.UserMapper;
 import com.nkk.Users.repository.UserRepository;
 import com.nkk.Users.service.IUserService;
@@ -59,8 +61,9 @@ public class UserServiceImpl implements IUserService {
     public UserDTO registerUser(RegisterDTO registerDTO) {
        validatePassword(registerDTO.getPassword());
         // Validate email uniqueness
+        String email = registerDTO.getEmail();
         if (userRepository.findByEmail(registerDTO.getEmail()).isPresent()) {
-            throw new RuntimeException("Email already registered");
+            throw new UserAlreadyExistsException("User","email", email);
         }
         // Create a new user
         Users user = userMapper.mapToUser(registerDTO);
@@ -78,6 +81,11 @@ public class UserServiceImpl implements IUserService {
     @Transactional
     public UserDTO registerAdmin(RegisterDTO registerDTO) {
         validatePassword(registerDTO.getPassword());
+        // Validate email uniqueness
+        String email = registerDTO.getEmail();
+        if (userRepository.findByEmail(registerDTO.getEmail()).isPresent()) {
+            throw new UserAlreadyExistsException("Admin","email", email);
+        }
         Users user = userMapper.mapToUser(registerDTO);
         user.setPassword(passwordEncoder.encode(registerDTO.getPassword()));
         user.setRole(Role.ADMIN); // Set role to ADMIN
@@ -98,7 +106,7 @@ public class UserServiceImpl implements IUserService {
     }
     public void initiatePasswordReset(String email) {
         Users user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
         UserDetails userDetails = customUserDetailsService.loadUserByUsername(email);
         String resetToken = jwtUtil.generateRefreshToken(userDetails);
         // For now, just log the reset token (we'll integrate email service later)
@@ -110,7 +118,7 @@ public class UserServiceImpl implements IUserService {
         String email = jwtUtil.extractUsername(token);
         // Step 2: Fetch the user by email
         Users user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+                .orElseThrow(() -> new ResourceNotFoundException("User","email", email));
         // Step 3: Validate the new password
         validatePassword(newPassword);
         // Step 4: Update the password
@@ -123,7 +131,7 @@ public class UserServiceImpl implements IUserService {
         String email = jwtUtil.extractUsername(token);
         System.out.println("Email extracted from token: " + email);
         Users user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+                .orElseThrow(() -> new ResourceNotFoundException("User","email", email));
         System.out.println("User found: " + user.getEmail());
         // Step 3: Validate the current password
         if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
@@ -139,13 +147,13 @@ public class UserServiceImpl implements IUserService {
 
     public UserDTO getUserById(Long userId) {
         Users users = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("User", "userId", userId));
         return userMapper.mapToUserDTO(users);
     }
 
     public UserDTO getUserByEmail(String email) {
         Users users = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
         return userMapper.mapToUserDTO(users);
     }
 
@@ -159,7 +167,7 @@ public class UserServiceImpl implements IUserService {
     @Override
     public UserDTO updateUser(Long userId, RegisterDTO registerDTO) {
         Users user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
         user.setUsername(registerDTO.getUsername());
         user.setEmail(registerDTO.getEmail());
         user.setPassword(registerDTO.getPassword());
@@ -173,15 +181,15 @@ public class UserServiceImpl implements IUserService {
         if(user.isPresent()) {
            return user.get().getUserId();
         } else{
-          throw new RuntimeException("User not found with Email: "+ email);
+          throw new ResourceNotFoundException("User","email", email);
         }
     }
 
     @Transactional
     @Override
-    public void deleteUser(Long id) {
-        Users user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+    public void deleteUser(Long userId) {
+        Users user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
         userRepository.delete(user);
     }
 

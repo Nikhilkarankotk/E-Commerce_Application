@@ -23,6 +23,10 @@ public class ProductController {
         return productService.getProductById(id);
     }
 
+    @GetMapping("/stock/{id}")
+    public Integer getProductByStock(@PathVariable Long id) {
+        return productService.getProductByStock(id);
+    }
     @PostMapping("/create")
     public ProductDTO addProduct(@RequestBody ProductDTO productDTO) {
         return productService.addProduct(productDTO);

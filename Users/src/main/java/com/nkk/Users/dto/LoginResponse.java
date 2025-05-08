@@ -4,8 +4,8 @@ import lombok.Data;
 
 @Data
 public class LoginResponse {
-    private String refreshToken;
-    public LoginResponse(String refreshToken) {
-        this.refreshToken = refreshToken;
+    private String accessToken;
+    public LoginResponse(String accessToken) {
+        this.accessToken = accessToken;
     }
 }

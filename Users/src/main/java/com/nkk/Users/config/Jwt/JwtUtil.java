@@ -16,14 +16,12 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static com.nkk.Users.constants.UserConstants.*;
+
 
 @Component
 public class JwtUtil {
 
-//    private static final Key SECRET_KEY = Keys.secretKeyFor(SignatureAlgorithm.HS256); // Generate secure key
-    private static final long EXPIRATION_TIME = 8_6400_000; // 1 day
-    private static final long REFRESH_TOKEN_EXPIRATION =  17_28_00_000; // 2 days
-    private static final String SECRET_KEY = "MySuperSecretKeyThatShouldBeVeryLong";
 
     public static Key getSigningKey() {
         return Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));

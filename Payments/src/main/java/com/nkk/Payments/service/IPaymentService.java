@@ -33,11 +33,11 @@ public interface IPaymentService {
 
     /**
      * @param orderId
-     * @param amount
+//     * @param amount
      * @return
      * @throws StripeException
      */
-    Map<String, String> createPaymentIntent(Long orderId, double amount) throws StripeException;
+    Map<String, String> createPaymentIntent(Long orderId) throws StripeException;
 
     /**
      *

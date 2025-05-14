@@ -1,5 +1,6 @@
 package com.nkk.Payments.service.impl;
 
+import com.nkk.Payments.dto.OrderDTO;
 import com.nkk.Payments.dto.PaymentConfirmationDTO;
 import com.nkk.Payments.dto.PaymentDTO;
 import com.nkk.Payments.entity.Payment;
@@ -33,7 +34,14 @@ public class PaymentServiceImpl implements IPaymentService {
     private static final Logger logger = LoggerFactory.getLogger(PaymentServiceImpl.class);
 
     @Transactional
-    public Map<String, String> createPaymentIntent(Long orderId, double amount) throws StripeException {
+    public Map<String, String> createPaymentIntent(Long orderId) throws StripeException {
+        OrderDTO orderDTO =orderFeignClient.getOrderById(orderId).getBody();
+        if(orderDTO==null) throw new RuntimeException("Order not found with ID: "+ orderId);
+
+        double amount = orderDTO.getTotalAmount();
+        if(amount <=0){
+            throw new RuntimeException("Payment amount must be greater than zero");
+        }
         PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
             .setAmount((long) (amount * 100))
             .setCurrency("usd")

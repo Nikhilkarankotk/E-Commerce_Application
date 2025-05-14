@@ -28,7 +28,7 @@ public class PaymentController {
     public ResponseEntity<Map<String,String>> createPaymentIntent(
         @RequestBody CreatePaymentIntentRequestDTO request) {
         try {
-            Map<String, String> response = paymentService.createPaymentIntent(request.getOrderId(), request.getAmount());
+            Map<String, String> response = paymentService.createPaymentIntent(request.getOrderId());
             return new ResponseEntity<>(response, HttpStatus.OK);
         } catch (Exception e) {
             return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);

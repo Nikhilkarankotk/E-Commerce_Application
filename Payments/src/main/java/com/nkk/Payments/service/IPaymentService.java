@@ -2,8 +2,8 @@ package com.nkk.Payments.service;
 
 import com.nkk.Payments.dto.PaymentDTO;
 import com.stripe.exception.StripeException;
-import com.stripe.model.Charge;
-import com.stripe.model.PaymentIntent;
+
+import java.util.Map;
 
 public interface IPaymentService {
 //    /**
@@ -32,13 +32,12 @@ public interface IPaymentService {
     PaymentDTO getPaymentByOrderId(Long orderId);
 
     /**
-     *
      * @param orderId
      * @param amount
      * @return
      * @throws StripeException
      */
-    String createPaymentIntent(Long orderId, double amount) throws StripeException;
+    Map<String, String> createPaymentIntent(Long orderId, double amount) throws StripeException;
 
     /**
      *

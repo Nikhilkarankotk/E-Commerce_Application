@@ -1,6 +1,8 @@
 package com.nkk.Payments.controller;
 
+import com.nkk.Payments.dto.ConfirmPaymentRequestDTO;
 import com.nkk.Payments.dto.CreatePaymentIntentRequestDTO;
+import com.nkk.Payments.dto.PaymentConfirmationDTO;
 import com.nkk.Payments.dto.PaymentDTO;
 import com.nkk.Payments.service.IPaymentService;
 import com.stripe.exception.StripeException;
@@ -22,57 +24,25 @@ public class PaymentController {
     private IPaymentService paymentService;
     private static final Logger logger = LoggerFactory.getLogger(PaymentController.class);
 
-//    @PostMapping("/create-intent")
-//    public ResponseEntity<String> createPaymentIntent(
-//            @RequestBody Map<String, Object> requestBody) {
-//        try {
-//            logger.info("Received request: {}", requestBody); // Log the incoming request
-//            Long orderId = Long.valueOf(requestBody.get("orderId").toString());
-//            double amount = Double.parseDouble(requestBody.get("amount").toString());
-//            String paymentIntentId = paymentService.createPaymentIntent(orderId, amount);
-//            return new ResponseEntity<>(paymentIntentId, HttpStatus.OK);
-//        } catch (Exception e) {
-//            logger.error("Failed to process request: ", e); // Log the error
-//            return new ResponseEntity<>("Failed to create Payment Intent: " + e.getMessage(), HttpStatus.BAD_REQUEST);
-//        }
-//    }
-//    @PostMapping("/create-intent")
-//    public ResponseEntity<String> createPaymentIntent(
-//            @RequestParam Long orderId,
-//            @RequestParam double amount) {
-//        try {
-//            String paymentIntentId = String.valueOf(paymentService.createPaymentIntent(orderId, amount));
-//            return new ResponseEntity<>(paymentIntentId, HttpStatus.OK);
-//        } catch (StripeException e) {
-//            return new ResponseEntity<>("Failed to create Payment Intent: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
-//        }
-//    }
     @PostMapping("/create-intent")
     public ResponseEntity<Map<String,String>> createPaymentIntent(
         @RequestBody CreatePaymentIntentRequestDTO request) {
-    try {
-        Long orderId = request.getOrderId();
-        double amount = request.getAmount();
-        String paymentIntentId = paymentService.createPaymentIntent(orderId, amount);
-        // Return a JSON object
-        Map<String, String> response = new HashMap<>();
-        response.put("clientSecret", paymentIntentId);
-        return new ResponseEntity<>(response, HttpStatus.OK);
-
-    } catch (Exception e) {
-        return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
-    }
-}
-    @PostMapping("/confirm")
-    public ResponseEntity<PaymentDTO> confirmPayment(
-            @RequestParam String paymentIntentId) {
         try {
-            PaymentDTO paymentDTO = paymentService.confirmPayment(paymentIntentId);
-            return new ResponseEntity<>(paymentDTO, HttpStatus.OK);
-        } catch (StripeException e) {
-            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+            Map<String, String> response = paymentService.createPaymentIntent(request.getOrderId(), request.getAmount());
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        } catch (Exception e) {
+            return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
         }
     }
+    @PostMapping("/confirm")
+    public ResponseEntity<PaymentDTO> confirmPayment(@RequestBody ConfirmPaymentRequestDTO request) {
+        try {
+        return new ResponseEntity<>(paymentService.confirmPayment(request.getPaymentIntentId()), HttpStatus.OK);
+        } catch (StripeException e) {
+        return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
     @GetMapping("/order/{orderId}")
     public ResponseEntity<PaymentDTO> getPaymentByOrderId(@PathVariable Long orderId) {
         PaymentDTO paymentDTO = paymentService.getPaymentByOrderId(orderId);

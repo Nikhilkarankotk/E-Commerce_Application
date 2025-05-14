@@ -1,5 +1,6 @@
 package com.nkk.Payments.dto;
 
+import com.stripe.model.PaymentIntent;
 import lombok.Data;
 
 import java.time.LocalDateTime;

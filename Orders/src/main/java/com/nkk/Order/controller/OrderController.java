@@ -44,5 +44,10 @@ public class OrderController {
         OrderDTO orderDTO = orderService.confirmPayment(orderId, paymentConfirmationDTO);
         return new ResponseEntity<>(orderDTO, HttpStatus.OK);
     }
+    @GetMapping("/orderStatus/{orderId}")
+    public ResponseEntity<String> orderStatusById(@RequestParam Long orderId) {
+        String orderStatus = orderService.orderStatusById(orderId);
+        return new ResponseEntity<>(orderStatus, HttpStatus.OK);
+    }
 
 }

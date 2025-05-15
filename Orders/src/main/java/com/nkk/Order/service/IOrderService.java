@@ -39,5 +39,8 @@ public interface IOrderService {
 
 
     OrderDTO confirmPayment(Long orderId, PaymentConfirmationDTO paymentConfirmationDTO);
+
+    String orderStatusById(Long orderId);
+
 }
 

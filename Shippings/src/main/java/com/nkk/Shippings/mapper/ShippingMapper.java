@@ -11,6 +11,7 @@ public class ShippingMapper {
         shippingDTO.setShippingId(shipping.getShippingId());
         shippingDTO.setOrderId(shipping.getOrderId());
         shippingDTO.setShippingAddress(shipping.getShippingAddress());
+        shippingDTO.setTrackingNumber(shipping.getTrackingNumber());
         shippingDTO.setStatus(shipping.getStatus());
         shippingDTO.setCreatedAt(shipping.getCreatedAt());
         shippingDTO.setUpdatedAt(shipping.getUpdatedAt());

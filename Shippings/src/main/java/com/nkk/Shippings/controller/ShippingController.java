@@ -1,6 +1,7 @@
 package com.nkk.Shippings.controller;
 
 import com.nkk.Shippings.dto.ShippingDTO;
+import com.nkk.Shippings.dto.ShippingStatus;
 import com.nkk.Shippings.service.IShippingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -26,7 +27,7 @@ public class ShippingController {
     @PutMapping("/{shippingId}")
     public ResponseEntity<ShippingDTO> updateShippingStatus(
             @PathVariable Long shippingId,
-            @RequestParam String status) {
+            @RequestParam ShippingStatus status) {
         ShippingDTO shippingDTO = shippingService.updateShippingStatus(shippingId, status);
         return new ResponseEntity<>(shippingDTO, HttpStatus.OK);
     }

@@ -14,11 +14,9 @@ import com.nkk.Order.service.client.UsersFeignClient;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
-import org.aspectj.weaver.ast.Var;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,7 +24,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -128,6 +126,7 @@ public class OrderServiceImpl implements IOrderService {
         // Map to DTO and return
         return orderMapper.mapToOrderDTO(savedOrder);
     }
+
     private String extractEmailFromToken(String token) {
         String jwtToken = token.substring(7); // Extract token from "Bearer " prefix
         Claims claims = Jwts.parser()
@@ -137,5 +136,11 @@ public class OrderServiceImpl implements IOrderService {
                 .getBody();
         return claims.getSubject();
     }
+
+    public String orderStatusById(Long orderId) {
+        Optional<Order> order = orderRepository.findById(orderId);
+        return order.get().getOrderStatus();
+    }
+
 
 }

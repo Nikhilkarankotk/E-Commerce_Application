@@ -16,6 +16,7 @@ public class Shipping {
     private Long shippingId;
     private Long orderId;
     private String shippingAddress;
+    private String trackingNumber;
     private String status; // e.g., PROCESSING, SHIPPED, DELIVERED
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

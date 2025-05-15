@@ -1,6 +1,7 @@
 package com.nkk.Shippings.service;
 
 import com.nkk.Shippings.dto.ShippingDTO;
+import com.nkk.Shippings.dto.ShippingStatus;
 
 public interface IShippingService {
 
@@ -25,5 +26,5 @@ public interface IShippingService {
      * @param status
      * @return
      */
-    public ShippingDTO updateShippingStatus(Long shippingId, String status);
+    public ShippingDTO updateShippingStatus(Long shippingId, ShippingStatus status);
 }

@@ -1,20 +1,20 @@
 package com.nkk.Products.service;
 
 
-import com.nkk.Products.dto.ProductDTO;
+import com.nkk.Products.dto.CategoryDTO;
 import com.nkk.Products.entity.Category;
 
 import java.util.List;
 
 public interface ICategoryService {
 
-    List<Category> getAllCategories();
+    List<CategoryDTO> getAllCategories();
 
-    Category getCategoryById(Long id);
+    CategoryDTO getCategoryById(Long id);
 
-    Category addCategory(Category category);
+    CategoryDTO addCategory(CategoryDTO categoryDTO);
 
-    Category updateCategory(Long id, Category updatedCategory);
+    CategoryDTO updateCategory(Long id, CategoryDTO updatedCategory);
 
     void deleteCategory(Long id);
 

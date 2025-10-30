@@ -1,5 +1,6 @@
 package com.nkk.Products.controller;
 
+import com.nkk.Products.dto.CategoryDTO;
 import com.nkk.Products.dto.ProductDTO;
 import com.nkk.Products.entity.Category;
 import com.nkk.Products.service.ICategoryService;
@@ -20,26 +21,26 @@ public class CategoryController {
     private IProductService productService;
 
     @GetMapping
-    public ResponseEntity<List<Category>> getAllCategories() {
-        List<Category> categories = categoryService.getAllCategories();
+    public ResponseEntity<List<CategoryDTO>> getAllCategories() {
+        List<CategoryDTO> categories = categoryService.getAllCategories();
         return new ResponseEntity<>(categories, HttpStatus.OK);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Category> getCategoryById(@PathVariable Long id) {
-        Category category = categoryService.getCategoryById(id);
+    public ResponseEntity<CategoryDTO> getCategoryById(@PathVariable Long id) {
+        CategoryDTO category = categoryService.getCategoryById(id);
         return new ResponseEntity<>(category, HttpStatus.OK);
     }
 
     @PostMapping("/create")
-    public ResponseEntity<Category> addCategory(@RequestBody Category category) {
-        Category savedCategory = categoryService.addCategory(category);
+    public ResponseEntity<CategoryDTO> addCategory(@RequestBody CategoryDTO category) {
+        CategoryDTO savedCategory = categoryService.addCategory(category);
         return new ResponseEntity<>(savedCategory, HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Category> updateCategory(@PathVariable Long id, @RequestBody Category category) {
-        Category updatedCategory = categoryService.updateCategory(id, category);
+    public ResponseEntity<CategoryDTO> updateCategory(@PathVariable Long id, @RequestBody CategoryDTO category) {
+        CategoryDTO updatedCategory = categoryService.updateCategory(id, category);
         return new ResponseEntity<>(updatedCategory, HttpStatus.OK);
     }
     @DeleteMapping("/{id}")

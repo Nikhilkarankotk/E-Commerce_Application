@@ -1,15 +1,18 @@
 package com.nkk.Products.service.impl;
 
 import com.nkk.Products.dto.ProductDTO;
+import com.nkk.Products.dto.SubCategoryDTO;
 import com.nkk.Products.entity.Category;
 import com.nkk.Products.entity.Product;
+import com.nkk.Products.entity.SubCategory;
 import com.nkk.Products.exception.ResourceAlreadyExistsException;
 import com.nkk.Products.exception.ResourceNotFoundException;
 import com.nkk.Products.exception.PriceStockValidationException;
 import com.nkk.Products.mapper.ProductMapper;
 import com.nkk.Products.repository.ProductRepository;
-import com.nkk.Products.service.ICategoryService;
+import com.nkk.Products.repository.SubCategoryRepository;
 import com.nkk.Products.service.IProductService;
+import com.nkk.Products.service.ISubCategoryService;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -21,13 +24,15 @@ import java.util.stream.Collectors;
 public class ProductServiceImpl implements IProductService {
 
     private final ProductRepository productRepository;
-    private final ICategoryService categoryService;
+    private final SubCategoryRepository subCategoryRepository;
+    private final ISubCategoryService subCategoryService;
     private final ProductMapper productMapper;
 
     @Autowired
-    public ProductServiceImpl(ProductRepository productRepository, ICategoryService categoryService, ProductMapper productMapper) {
+    public ProductServiceImpl(ProductRepository productRepository, SubCategoryRepository subCategoryRepository, ISubCategoryService subCategoryService, ProductMapper productMapper) {
         this.productRepository = productRepository;
-        this.categoryService = categoryService;
+        this.subCategoryRepository = subCategoryRepository;
+        this.subCategoryService = subCategoryService;
         this.productMapper = productMapper;
     }
 
@@ -46,24 +51,49 @@ public class ProductServiceImpl implements IProductService {
                 .orElseThrow(() -> new ResourceNotFoundException("Product", "id", id));
         return product.getStockQuantity();
     }
+//    @Transactional
+//    public ProductDTO addProduct(ProductDTO productDTO) {
+//        Product product = productMapper.mapToProduct(productDTO);
+//        Category category = new Category();
+//        //fetch the category from the database
+//        List<SubCategoryDTO> subCategory = subCategoryService.getSubCategoriesByCategoryId(category.getCategoryId());
+//        if (subCategory == null) {
+//            throw new ResourceNotFoundException("SubCategory", "id", productDTO.getSubCategoryId());
+//        }
+//        // Check if product already exists with same name in the same category
+//        if (productRepository.existsByNameAndSubCategory_SubCategoryId(productDTO.getName(), productDTO.getSubCategoryId())) {
+//            throw new ResourceAlreadyExistsException("Product already exists with name: "
+//                    + productDTO.getName() + " in Subcategory ID: " + productDTO.getSubCategoryId());
+//        }
+//        product.setSubCategory((SubCategory) subCategory);
+//        validateProduct(product);
+//        Product savedProduct = productRepository.save(product);
+//        return productMapper.mapToProductDTO(savedProduct);
+//    }
+
     @Transactional
     public ProductDTO addProduct(ProductDTO productDTO) {
-        Product product = productMapper.mapToProduct(productDTO);
-        //fetch the category from the database
-        Category category = categoryService.getCategoryById(productDTO.getCategoryId());
-        if (category == null) {
-            throw new ResourceNotFoundException("Category", "id", productDTO.getCategoryId());
+        if (productDTO.getSubCategoryId() == null) {
+            throw new IllegalArgumentException("SubCategory ID must not be null");
         }
-        // Check if product already exists with same name in the same category
-        if (productRepository.existsByNameAndCategory_CategoryId(productDTO.getName(), productDTO.getCategoryId())) {
+
+        SubCategory subCategory = subCategoryRepository.findById(productDTO.getSubCategoryId())
+                .orElseThrow(() -> new ResourceNotFoundException("SubCategory", "id", productDTO.getSubCategoryId()));
+
+        if (productRepository.existsByNameAndSubCategory_SubCategoryId(productDTO.getName(), productDTO.getSubCategoryId())) {
             throw new ResourceAlreadyExistsException("Product already exists with name: "
-                    + productDTO.getName() + " in category ID: " + productDTO.getCategoryId());
+                    + productDTO.getName() + " in Subcategory ID: " + productDTO.getSubCategoryId());
         }
-        product.setCategory(category);
+
+        Product product = productMapper.mapToProduct(productDTO);
+        product.setSubCategory(subCategory);
         validateProduct(product);
-        Product savedProduct = productRepository.save(product);
-        return productMapper.mapToProductDTO(savedProduct);
+
+        Product saved = productRepository.save(product);
+        return productMapper.mapToProductDTO(saved);
     }
+
+
     @Transactional
     public ProductDTO updateProduct(Long id, ProductDTO productDTO) {
         Product existingProduct = productRepository.findById(id)
@@ -73,7 +103,7 @@ public class ProductServiceImpl implements IProductService {
         existingProduct.setDescription(updatedProduct.getDescription());
         existingProduct.setPrice(updatedProduct.getPrice());
         existingProduct.setStockQuantity(updatedProduct.getStockQuantity());
-        existingProduct.setCategory(updatedProduct.getCategory());
+        existingProduct.setSubCategory(updatedProduct.getSubCategory());
         validateProduct(existingProduct);
         Product savedProduct = productRepository.save(existingProduct);
         return productMapper.mapToProductDTO(savedProduct);
@@ -92,7 +122,7 @@ public class ProductServiceImpl implements IProductService {
         if (product.getName() == null || product.getName().trim().isEmpty() || product.getDescription() == null || product.getDescription().trim().isEmpty()) {
             throw new PriceStockValidationException("Product name is required and description is required");
         }
-        if (product.getCategory() == null) {
+        if (product.getSubCategory() == null) {
             throw new PriceStockValidationException("Product category is required");
         }
     }

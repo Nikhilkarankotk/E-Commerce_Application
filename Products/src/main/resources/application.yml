@@ -1,3 +1,13 @@
+logging:
+  level:
+    root: INFO
+    com.nkk.Products: DEBUG
+    org:
+    springframework:
+    scheduling:
+    concurrent:
+    ThreadPoolTaskExecutor: DEBUG
+
 server:
   port: 8080
 spring:

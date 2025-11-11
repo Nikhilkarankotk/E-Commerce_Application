@@ -3,6 +3,8 @@ package com.nkk.Products.controller;
 import com.nkk.Products.dto.ProductDTO;
 import com.nkk.Products.service.IProductService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,6 +29,7 @@ public class ProductController {
     public Integer getProductByStock(@PathVariable Long id) {
         return productService.getProductByStock(id);
     }
+
     @PostMapping("/create")
     public ProductDTO addProduct(@RequestBody ProductDTO productDTO) {
         return productService.addProduct(productDTO);
@@ -49,4 +52,3 @@ public class ProductController {
         return productService.updateProductStock(productDTO);
     }
 }
-   

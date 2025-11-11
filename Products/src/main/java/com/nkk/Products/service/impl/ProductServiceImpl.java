@@ -1,117 +1,116 @@
 package com.nkk.Products.service.impl;
 
-import com.nkk.Products.dto.ProductDTO;
-import com.nkk.Products.dto.SubCategoryDTO;
-import com.nkk.Products.entity.Category;
-import com.nkk.Products.entity.Product;
 import com.nkk.Products.entity.SubCategory;
-import com.nkk.Products.exception.ResourceAlreadyExistsException;
-import com.nkk.Products.exception.ResourceNotFoundException;
 import com.nkk.Products.exception.PriceStockValidationException;
+import com.nkk.Products.exception.ResourceAlreadyExistsException;
 import com.nkk.Products.mapper.ProductMapper;
-import com.nkk.Products.repository.ProductRepository;
 import com.nkk.Products.repository.SubCategoryRepository;
 import com.nkk.Products.service.IProductService;
-import com.nkk.Products.service.ISubCategoryService;
-import jakarta.transaction.Transactional;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.annotation.PreDestroy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
+import com.nkk.Products.dto.ProductDTO;
+import com.nkk.Products.entity.Product;
+import com.nkk.Products.exception.ResourceNotFoundException;
+import com.nkk.Products.repository.ProductRepository;
+
 
 @Service
 public class ProductServiceImpl implements IProductService {
-
-    private final ProductRepository productRepository;
     private final SubCategoryRepository subCategoryRepository;
-    private final ISubCategoryService subCategoryService;
     private final ProductMapper productMapper;
+    private final ProductRepository productRepository;
+    private final ReentrantReadWriteLock inventoryLock = new ReentrantReadWriteLock();
+    private final Logger logger = LoggerFactory.getLogger(ProductServiceImpl.class);
+    private final ThreadPoolTaskExecutor inventoryUpdateThreadPool;
+    private final ThreadPoolTaskExecutor bulkProductThreadPool;
 
-    @Autowired
-    public ProductServiceImpl(ProductRepository productRepository, SubCategoryRepository subCategoryRepository, ISubCategoryService subCategoryService, ProductMapper productMapper) {
-        this.productRepository = productRepository;
+    public ProductServiceImpl(SubCategoryRepository subCategoryRepository, ProductMapper productMapper,
+                              ProductRepository productRepository,
+                              @Qualifier("inventoryUpdateThreadPool") ThreadPoolTaskExecutor inventoryUpdateThreadPool,
+                              @Qualifier("bulkProductThreadPool") ThreadPoolTaskExecutor bulkProductThreadPool) {
         this.subCategoryRepository = subCategoryRepository;
-        this.subCategoryService = subCategoryService;
         this.productMapper = productMapper;
+        this.productRepository = productRepository;
+        this.inventoryUpdateThreadPool = inventoryUpdateThreadPool;
+        this.bulkProductThreadPool = bulkProductThreadPool;
     }
 
+    @Override
+    @Transactional
+    public ProductDTO updateProductStock(ProductDTO productDTO) {
+        logger.info("Starting stock update for product ID: {} on thread: {}",
+                productDTO.getProductId(), Thread.currentThread().getName());
+
+        return CompletableFuture.supplyAsync(() -> {
+            logger.info("Processing stock update for product ID: {} on thread: {}",
+                    productDTO.getProductId(), Thread.currentThread().getName());
+
+            inventoryLock.writeLock().lock();
+            try {
+                Product product = productRepository.findById(productDTO.getProductId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Product", "id", productDTO.getProductId()));
+
+                int updatedStock = product.getStockQuantity() + productDTO.getStockQuantity();
+                product.setStockQuantity(updatedStock);
+                Product savedProduct = productRepository.save(product);
+                logger.info("Completed stock update for product ID: {}. New stock: {}",
+                        productDTO.getProductId(), updatedStock);
+                return mapToDTO(savedProduct);
+            } finally {
+                inventoryLock.writeLock().unlock();
+            }
+        }, inventoryUpdateThreadPool).join();
+    }
+    @Override
     public List<ProductDTO> getAllProducts() {
-        return productRepository.findAll().stream()
-                .map(ProductMapper::mapToProductDTO)
-                .collect(Collectors.toList());
-    }
-    public ProductDTO getProductById(Long id) {
-        return productRepository.findById(id)
-                .map(ProductMapper::mapToProductDTO)
-                .orElseThrow(() -> new ResourceNotFoundException("Product", "id", id));
-    }
-    public Integer getProductByStock(Long id) {
-        Product product = productRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Product", "id", id));
-        return product.getStockQuantity();
-    }
-//    @Transactional
-//    public ProductDTO addProduct(ProductDTO productDTO) {
-//        Product product = productMapper.mapToProduct(productDTO);
-//        Category category = new Category();
-//        //fetch the category from the database
-//        List<SubCategoryDTO> subCategory = subCategoryService.getSubCategoriesByCategoryId(category.getCategoryId());
-//        if (subCategory == null) {
-//            throw new ResourceNotFoundException("SubCategory", "id", productDTO.getSubCategoryId());
-//        }
-//        // Check if product already exists with same name in the same category
-//        if (productRepository.existsByNameAndSubCategory_SubCategoryId(productDTO.getName(), productDTO.getSubCategoryId())) {
-//            throw new ResourceAlreadyExistsException("Product already exists with name: "
-//                    + productDTO.getName() + " in Subcategory ID: " + productDTO.getSubCategoryId());
-//        }
-//        product.setSubCategory((SubCategory) subCategory);
-//        validateProduct(product);
-//        Product savedProduct = productRepository.save(product);
-//        return productMapper.mapToProductDTO(savedProduct);
-//    }
+        logger.info("Fetching all products on thread: {}", Thread.currentThread().getName());
 
-    @Transactional
+        return CompletableFuture.supplyAsync(() -> {
+            logger.info("Processing product fetch on thread: {}", Thread.currentThread().getName());
+
+            List<Product> products = productRepository.findAll();
+            logger.info("Fetched {} products", products.size());
+
+            return products.stream()
+                    .map(ProductMapper::mapToProductDTO)
+                    .collect(Collectors.toList());
+        }, bulkProductThreadPool).join();
+    }
+
+
     public ProductDTO addProduct(ProductDTO productDTO) {
-        if (productDTO.getSubCategoryId() == null) {
-            throw new IllegalArgumentException("SubCategory ID must not be null");
-        }
-
-        SubCategory subCategory = subCategoryRepository.findById(productDTO.getSubCategoryId())
-                .orElseThrow(() -> new ResourceNotFoundException("SubCategory", "id", productDTO.getSubCategoryId()));
-
-        if (productRepository.existsByNameAndSubCategory_SubCategoryId(productDTO.getName(), productDTO.getSubCategoryId())) {
-            throw new ResourceAlreadyExistsException("Product already exists with name: "
-                    + productDTO.getName() + " in Subcategory ID: " + productDTO.getSubCategoryId());
-        }
-
-        Product product = productMapper.mapToProduct(productDTO);
-        product.setSubCategory(subCategory);
-        validateProduct(product);
-
-        Product saved = productRepository.save(product);
-        return productMapper.mapToProductDTO(saved);
+    if (productDTO.getSubCategoryId() == null) {
+        throw new IllegalArgumentException("SubCategory ID must not be null");
     }
 
+    SubCategory subCategory = subCategoryRepository.findById(productDTO.getSubCategoryId())
+            .orElseThrow(() -> new ResourceNotFoundException("SubCategory", "id", productDTO.getSubCategoryId()));
 
-    @Transactional
-    public ProductDTO updateProduct(Long id, ProductDTO productDTO) {
-        Product existingProduct = productRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Product", "id", id ));
-        Product updatedProduct = productMapper.mapToProduct(productDTO);
-        existingProduct.setName(updatedProduct.getName());
-        existingProduct.setDescription(updatedProduct.getDescription());
-        existingProduct.setPrice(updatedProduct.getPrice());
-        existingProduct.setStockQuantity(updatedProduct.getStockQuantity());
-        existingProduct.setSubCategory(updatedProduct.getSubCategory());
-        validateProduct(existingProduct);
-        Product savedProduct = productRepository.save(existingProduct);
-        return productMapper.mapToProductDTO(savedProduct);
+    if (productRepository.existsByNameAndSubCategory_SubCategoryId(productDTO.getName(), productDTO.getSubCategoryId())) {
+        throw new ResourceAlreadyExistsException("Product already exists with name: "
+                + productDTO.getName() + " in Subcategory ID: " + productDTO.getSubCategoryId());
     }
-    @Transactional
-    public void deleteProduct(Long id) {
-        productRepository.deleteById(id);
-    }
+
+    Product product = productMapper.mapToProduct(productDTO);
+    product.setSubCategory(subCategory);
+    validateProduct(product);
+
+    Product saved = productRepository.save(product);
+    return productMapper.mapToProductDTO(saved);
+}
     private void validateProduct(Product product) {
         if (product.getStockQuantity() <= 0) {
             throw new PriceStockValidationException("Stock quantity cannot be negative or zero");
@@ -126,19 +125,34 @@ public class ProductServiceImpl implements IProductService {
             throw new PriceStockValidationException("Product category is required");
         }
     }
-
+    @Override
+    public ProductDTO getProductById(Long id) {
+        return productRepository.findById(id)
+                .map(ProductMapper::mapToProductDTO)
+                .orElseThrow(() -> new ResourceNotFoundException("Product", "id", id));
+    }
+    @Override
+    public Integer getProductByStock(Long id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Product", "id", id));
+        return product.getStockQuantity();
+    }
+    @Override
     @Transactional
-    public ProductDTO updateProductStock(ProductDTO productDTO) {
-        // Fetch the product by ID
-        Product product = productRepository.findById(productDTO.getProductId())
-                .orElseThrow(() -> new ResourceNotFoundException("Product", "id", productDTO.getProductId()));
-        // Update the stock quantity
-        int updatedStock = product.getStockQuantity() + productDTO.getStockQuantity();
-        product.setStockQuantity(updatedStock);
-        // Save the updated product
-        Product savedProduct = productRepository.save(product);
-        // Map the updated product to DTO and return
+    public ProductDTO updateProduct(Long id, ProductDTO productDTO) {
+        Product existingProduct = productRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Product", "id", id));
+        existingProduct.setName(productDTO.getName());
+        existingProduct.setDescription(productDTO.getDescription());
+        existingProduct.setPrice(productDTO.getPrice());
+        existingProduct.setStockQuantity(productDTO.getStockQuantity());
+        Product savedProduct = productRepository.save(existingProduct);
         return mapToDTO(savedProduct);
+    }
+    @Override
+    @Transactional
+    public void deleteProduct(Long id) {
+        productRepository.deleteById(id);
     }
     private ProductDTO mapToDTO(Product product) {
         ProductDTO productDTO = new ProductDTO();
@@ -149,4 +163,36 @@ public class ProductServiceImpl implements IProductService {
         productDTO.setStockQuantity(product.getStockQuantity());
         return productDTO;
     }
+
+    @PreDestroy
+    public void destroy() {
+        inventoryUpdateThreadPool.shutdown();
+        bulkProductThreadPool.shutdown();
+        try {
+            if (!inventoryUpdateThreadPool.getThreadPoolExecutor().awaitTermination(60, TimeUnit.SECONDS)) {
+                inventoryUpdateThreadPool.getThreadPoolExecutor().shutdownNow();
+            }
+            if (!bulkProductThreadPool.getThreadPoolExecutor().awaitTermination(60, TimeUnit.SECONDS)) {
+                bulkProductThreadPool.getThreadPoolExecutor().shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            inventoryUpdateThreadPool.getThreadPoolExecutor().shutdownNow();
+            bulkProductThreadPool.getThreadPoolExecutor().shutdownNow();
+        }
+    }
+
+    @Scheduled(fixedRate = 5000)
+    public void logThreadPoolMetrics() {
+        ThreadPoolExecutor inventoryExecutor = inventoryUpdateThreadPool.getThreadPoolExecutor();
+        ThreadPoolExecutor bulkExecutor = bulkProductThreadPool.getThreadPoolExecutor();
+        logger.info("Inventory ThreadPool - Active: {}, Queue: {}",
+                inventoryExecutor.getActiveCount(),
+                inventoryExecutor.getQueue().size());
+        logger.info("Bulk Product ThreadPool - Active: {}, Queue: {}",
+                bulkExecutor.getActiveCount(),
+                bulkExecutor.getQueue().size());
+    }
+
+
 }

@@ -90,4 +90,10 @@ public class GlobalException extends ResponseEntityExceptionHandler {
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(ConcurrencyException.class)
+    public ResponseEntity<?> handleConcurrency(ConcurrencyException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("error", "concurrency_conflict", "message", ex.getMessage()));
+    }
+
 }

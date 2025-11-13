@@ -2,7 +2,7 @@ package com.nkk.Products.controller;
 
 import com.nkk.Products.dto.CategoryDTO;
 import com.nkk.Products.dto.ProductDTO;
-import com.nkk.Products.entity.Category;
+import com.nkk.Products.exception.ConcurrencyException;
 import com.nkk.Products.service.ICategoryService;
 import com.nkk.Products.service.IProductService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +10,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+
 @RestController
 @RequestMapping("/categories")
 public class CategoryController {
@@ -50,7 +52,7 @@ public class CategoryController {
     }
     // Add this new endpoint for updating stock
     @PutMapping("/stock")
-    public ProductDTO updateProductStock(@RequestBody ProductDTO productDTO) {
-        return productService.updateProductStock(productDTO);
+    public CompletableFuture<ProductDTO> updateProductStock(@RequestBody ProductDTO productDTO) throws ConcurrencyException {
+        return productService.updateProductStockAsync(productDTO);
     }
 }

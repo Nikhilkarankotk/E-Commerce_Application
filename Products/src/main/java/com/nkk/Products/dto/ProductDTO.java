@@ -23,6 +23,10 @@ public class ProductDTO {
     @Min(value = 0, message = "Stock quantity cannot be negative")
     private Integer stockQuantity;
 
-    @NotNull(message = "Category ID is required")
-    private Long categoryId;
+    @NotNull(message = "SubCategory ID is required")
+    private Long subCategoryId;
+
+    @NotNull(message = "SubCategory Name is required")
+    private String subCategoryName;
+
 }

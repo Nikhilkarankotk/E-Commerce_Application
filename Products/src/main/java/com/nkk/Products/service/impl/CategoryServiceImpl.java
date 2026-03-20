@@ -1,9 +1,11 @@
 package com.nkk.Products.service.impl;
 
+import com.nkk.Products.dto.CategoryDTO;
 import com.nkk.Products.entity.Category;
 import com.nkk.Products.exception.ResourceAlreadyExistsException;
 import com.nkk.Products.exception.ResourceNotFoundException;
 import com.nkk.Products.exception.ParentCategoryNotFoundException;
+import com.nkk.Products.mapper.CategoryMapper;
 import com.nkk.Products.repository.CategoryRepository;
 import com.nkk.Products.service.ICategoryService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,38 +19,67 @@ public class CategoryServiceImpl implements ICategoryService {
     @Autowired
     private CategoryRepository categoryRepository;
 
-    public List<Category> getAllCategories() {
-        return categoryRepository.findAll();
+    @Autowired
+    private CategoryMapper categoryMapper;
+
+    @Override
+    public List<CategoryDTO> getAllCategories() {
+        List<Category> categories = categoryRepository.findAll();
+        return categoryMapper.mapToCategoryDTOList(categories);
     }
 
-    public Category getCategoryById(Long id) {
-        return categoryRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Category", "id" ,id));
+    @Override
+    public CategoryDTO getCategoryById(Long id) {
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Category", "id", id));
+        return categoryMapper.mapToCategoryDTO(category);
     }
 
     @Transactional
-    public Category addCategory(Category category) {
-        if (categoryRepository.existsByCategoryName(category.getCategoryName())) {
-            throw new ResourceAlreadyExistsException("Category already exists with name: " + category.getCategoryName());
+    @Override
+    public CategoryDTO addCategory(CategoryDTO categoryDTO) {
+        if (categoryRepository.existsByCategoryName(categoryDTO.getCategoryName())) {
+            throw new ResourceAlreadyExistsException("Category already exists with name: " + categoryDTO.getCategoryName());
         }
-        return categoryRepository.save(category);
+
+        Category category = categoryMapper.mapToCategory(categoryDTO);
+
+        // Handle parent category if provided
+        if (categoryDTO.getParentCategoryId() != null) {
+            Category parent = categoryRepository.findById(categoryDTO.getParentCategoryId())
+                    .orElseThrow(() -> new ParentCategoryNotFoundException("Parent category not found"));
+            category.setParentCategory(parent);
+        }
+
+        Category saved = categoryRepository.save(category);
+        return categoryMapper.mapToCategoryDTO(saved);
     }
 
     @Transactional
-    public Category updateCategory(Long id, Category updatedCategory) {
-        Category existingCategory = getCategoryById(id);
-        existingCategory.setCategoryName(updatedCategory.getCategoryName());
-        if (updatedCategory.getParentCategory() != null) {
-            Category parentCategory = categoryRepository.findById(updatedCategory.getParentCategory().getCategoryId())
+    @Override
+    public CategoryDTO updateCategory(Long id, CategoryDTO categoryDTO) {
+        Category existingCategory = categoryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Category", "id", id));
+
+        existingCategory.setCategoryName(categoryDTO.getCategoryName());
+
+        if (categoryDTO.getParentCategoryId() != null) {
+            Category parentCategory = categoryRepository.findById(categoryDTO.getParentCategoryId())
                     .orElseThrow(() -> new ParentCategoryNotFoundException("Parent category not found"));
             existingCategory.setParentCategory(parentCategory);
+        } else {
+            existingCategory.setParentCategory(null);
         }
-        return categoryRepository.save(existingCategory);
+
+        Category updated = categoryRepository.save(existingCategory);
+        return categoryMapper.mapToCategoryDTO(updated);
     }
 
     @Transactional
+    @Override
     public void deleteCategory(Long id) {
-        Category category = getCategoryById(id);
+        Category category = categoryRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Category", "id", id));
         categoryRepository.delete(category);
     }
 }

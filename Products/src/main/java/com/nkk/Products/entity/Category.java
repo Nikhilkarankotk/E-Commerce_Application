@@ -25,10 +25,15 @@ public class Category {
     @JoinColumn(name = "parent_category_id")
     private Category parentCategory;
 
-    @OneToMany(mappedBy = "parentCategory", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Category> subCategories = new ArrayList<>();
+//    @OneToMany(mappedBy = "parentCategory", cascade = CascadeType.ALL, orphanRemoval = true)
+//    private List<Category> subCategories = new ArrayList<>();
 
-    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Product> products = new ArrayList<>();
+    @OneToMany(mappedBy = "parentCategory", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    private List<SubCategory> subCategories = new ArrayList<>();
+
+
+//    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
+//    private List<Product> products = new ArrayList<>();
 
 }

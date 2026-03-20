@@ -4,6 +4,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
+import java.util.List;
+
 @Data
 public class CategoryDTO {
 
@@ -12,6 +14,9 @@ public class CategoryDTO {
     @NotBlank(message = "Category name is required")
     @Size(max = 100, message = "Category name can't exceed 100 characters")
     private String categoryName;
+    
+    private Long parentCategoryId;  // ID of the parent category
 
-    private Long parentCategoryId;
+    private List<String> subCategoryNames;
+
 }

@@ -9,7 +9,6 @@ import com.nkk.Order.repository.OrderRepository;
 import com.nkk.Order.service.IOrderItemService;
 import com.nkk.Order.service.IOrderService;
 import com.nkk.Order.service.client.CartsFeignClient;
-//import com.nkk.Order.service.client.MessagingFeignClient;
 import com.nkk.Order.service.client.UsersFeignClient;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -17,6 +16,7 @@ import io.jsonwebtoken.security.Keys;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,8 +30,6 @@ import java.util.stream.Collectors;
 @Service
 public class OrderServiceImpl implements IOrderService {
 
-//    private static final Logger logger = LoggerFactory.getLogger(OrderServiceImpl.class);
-
     @Autowired
     private OrderRepository orderRepository;
     @Autowired
@@ -42,26 +40,24 @@ public class OrderServiceImpl implements IOrderService {
     private OrderMapper orderMapper;
     @Autowired
     private UsersFeignClient usersFeignClient;
-//    @Autowired
-//    private StreamBridge streamBridge;
+    @Autowired
+    private StreamBridge streamBridge;  // for publishing events
 
     private static final Logger logger = LoggerFactory.getLogger(OrderServiceImpl.class);
 
     private static final String SECRET_KEY = "MySuperSecretKeyThatShouldBeVeryLong";
-
 
     public static Key getSigningKey() {
         return Keys.hmacShaKeyFor(SECRET_KEY.getBytes(StandardCharsets.UTF_8));
     }
 
     @Transactional
-        public OrderDTO createOrder(String token) {
+    public OrderDTO createOrder(String token) {
         // Extract the user ID from the token
         String email = extractEmailFromToken(token);
         Long userId = usersFeignClient.getUserIdByEmail(email).getBody();
         // Step 1: Fetch the cart for the user
         CartDTO cartDTO = cartsFeignClient.getCartByUserId(token);
-//       logger.info("CartDto data info: {}",cartDTO);
         // Step 2: Create an order from the cart
         Order order = new Order();
         order.setUserId(userId);
@@ -69,7 +65,6 @@ public class OrderServiceImpl implements IOrderService {
         order.setOrderStatus("PENDING");
         order.setCreatedAt(LocalDateTime.now());
         // Step 3: Map cart items to order items
-//        logger.info("Order details: {}",order);
         for (CartItemDTO cartItemDTO : cartDTO.getItems()) {
             OrderItem orderItem = new OrderItem();
             orderItem.setProductId(cartItemDTO.getProductId());
@@ -80,19 +75,44 @@ public class OrderServiceImpl implements IOrderService {
         }
         // Save the order
         Order savedOrder = orderRepository.save(order);
-//        // Publish "Order Created" event
-//        OrderEvent orderEvent = new OrderEvent();
-//        orderEvent.setOrderId(savedOrder.getOrderId());
-//        orderEvent.setTotalAmount(savedOrder.getTotalAmount());
-//        streamBridge.send("orderCreated-out-0", orderEvent);
-        // Step 7: Return the order DTO
+        logger.info("Order saved with ID: {}", savedOrder.getOrderId());
+
+        // Publish OrderCreated event
+        OrderCreatedEvent event = new OrderCreatedEvent();
+        event.setOrderId(savedOrder.getOrderId());
+        event.setUserId(savedOrder.getUserId());
+        event.setTotalAmount(savedOrder.getTotalAmount());
+        event.setOrderStatus(savedOrder.getOrderStatus());
+        event.setCreatedAt(savedOrder.getCreatedAt());
+
+        List<OrderItemEvent> itemEvents = savedOrder.getItems().stream()
+                .map(item -> {
+                    OrderItemEvent itemEvent = new OrderItemEvent();
+                    itemEvent.setProductId(item.getProductId());
+                    itemEvent.setQuantity(item.getQuantity());
+                    itemEvent.setProductPrice(item.getProductPrice());
+                    return itemEvent;
+                })
+                .collect(Collectors.toList());
+        event.setItems(itemEvents);
+
+        // Send to the functional bean's output binding
+        boolean sent = streamBridge.send("orderCreatedSupplier-out-0", event);
+        if (sent) {
+            logger.info("OrderCreated event published for order ID: {}", savedOrder.getOrderId());
+        } else {
+            logger.error("Failed to publish OrderCreated event for order ID: {}", savedOrder.getOrderId());
+        }
+
         return orderMapper.mapToOrderDTO(savedOrder);
     }
+
     public OrderDTO getOrderById(Long orderId) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order", "id", orderId));
         return orderMapper.mapToOrderDTO(order);
     }
+
     public List<OrderDTO> getOrdersByUserId(String token) {
         String email = extractEmailFromToken(token);
         Long userId = usersFeignClient.getUserIdByEmail(email).getBody();
@@ -101,6 +121,7 @@ public class OrderServiceImpl implements IOrderService {
                 .map(orderMapper::mapToOrderDTO)
                 .collect(Collectors.toList());
     }
+
     @Transactional
     public OrderDTO updateOrderStatus(Long orderId, String status) {
         Order order = orderRepository.findById(orderId)
@@ -141,6 +162,4 @@ public class OrderServiceImpl implements IOrderService {
         Optional<Order> order = orderRepository.findById(orderId);
         return order.get().getOrderStatus();
     }
-
-
 }

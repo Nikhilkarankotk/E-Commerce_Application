@@ -1,4 +1,4 @@
-package com.nkk.Payments.dto;
+package com.nkk.Order.dto;
 
 import lombok.Data;
 import java.time.LocalDateTime;

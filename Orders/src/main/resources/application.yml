@@ -16,6 +16,19 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: true
+  cloud:
+    function:
+      definition: paymentConfirmed;orderCreatedSupplier   # must be semicolon separated
+    stream:
+      kafka:
+        binder:
+          brokers: localhost:9092
+      bindings:
+        orderCreatedSupplier-out-0:
+          destination: order.created
+        paymentConfirmed-in-0:
+          destination: payment.confirmed
+          group: order-group
 
 management:
   endpoints:
@@ -25,18 +38,6 @@ management:
   info:
     env:
       enabled: true
-#  cloud:
-#    stream:
-#      bindings:
-#        orderCreated-out-0:
-#          destination: order-created
-#        paymentConfirmed-out-0:
-#          destination: payment-confirmed
-#      kafka:
-#        binder:
-#          brokers: localhost:9092
-
-
 
 eureka:
   instance:
@@ -46,8 +47,15 @@ eureka:
     register-with-eureka: true
     service-url:
       defaultZone: http://localhost:8070/eureka
+
 info:
   app:
     name: "Orders Service"
     description: "eCommerce Orders Service"
     version: "1.0.0"
+
+logging:
+  level:
+    org.springframework.cloud.stream: WARN
+    org.springframework.integration: WARN
+    org.apache.kafka: WARN

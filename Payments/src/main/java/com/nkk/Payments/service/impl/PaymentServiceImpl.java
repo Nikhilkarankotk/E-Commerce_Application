@@ -1,7 +1,7 @@
 package com.nkk.Payments.service.impl;
 
 import com.nkk.Payments.dto.OrderDTO;
-import com.nkk.Payments.dto.PaymentConfirmationDTO;
+import com.nkk.Payments.dto.PaymentConfirmedEvent;
 import com.nkk.Payments.dto.PaymentDTO;
 import com.nkk.Payments.entity.Payment;
 import com.nkk.Payments.mapper.PaymentMapper;
@@ -14,6 +14,7 @@ import com.stripe.param.PaymentIntentCreateParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,13 +29,15 @@ public class PaymentServiceImpl implements IPaymentService {
     @Autowired
     private PaymentMapper paymentMapper;
     @Autowired
-    private OrderFeignClient orderFeignClient;
+    private OrderFeignClient orderFeignClient;  // kept only for retrieving order details (still needed)
+    @Autowired
+    private StreamBridge streamBridge;
 
     private static final Logger logger = LoggerFactory.getLogger(PaymentServiceImpl.class);
 
     @Transactional
     public Map<String, String> createPaymentIntent(Long orderId) throws StripeException {
-        OrderDTO orderDTO =orderFeignClient.getOrderById(orderId).getBody();
+        OrderDTO orderDTO = orderFeignClient.getOrderById(orderId).getBody();
         if(orderDTO==null) throw new RuntimeException("Order not found with ID: "+ orderId);
 
         double amount = orderDTO.getTotalAmount();
@@ -52,12 +55,12 @@ public class PaymentServiceImpl implements IPaymentService {
             )
             .build();
 
-    PaymentIntent paymentIntent = PaymentIntent.create(params);
+        PaymentIntent paymentIntent = PaymentIntent.create(params);
 
-    Map<String, String> response = new HashMap<>();
-    response.put("clientSecret", paymentIntent.getClientSecret());
-    response.put("paymentIntentId", paymentIntent.getId()); // ✅ also return ID
-    return response;
+        Map<String, String> response = new HashMap<>();
+        response.put("clientSecret", paymentIntent.getClientSecret());
+        response.put("paymentIntentId", paymentIntent.getId());
+        return response;
     }
 
     @Transactional
@@ -79,12 +82,21 @@ public class PaymentServiceImpl implements IPaymentService {
             payment.setCreatedAt(LocalDateTime.now());
             Payment savedPayment = paymentRepository.save(payment);
             logger.info("Payment saved: {}", savedPayment);
-            // Notify the Order Service
-            PaymentConfirmationDTO paymentConfirmationDTO = new PaymentConfirmationDTO();
-            paymentConfirmationDTO.setPaymentStatus(paymentStatus);
-            paymentConfirmationDTO.setPaymentTimestamp(LocalDateTime.now());
-            orderFeignClient.confirmPayment(savedPayment.getOrderId(), paymentConfirmationDTO);
-            logger.info("Order service notified of payment confirmation");
+
+            // Publish PaymentConfirmed event
+            PaymentConfirmedEvent event = new PaymentConfirmedEvent();
+            event.setOrderId(savedPayment.getOrderId());
+            event.setPaymentId(savedPayment.getPaymentId());
+            event.setStatus(savedPayment.getStatus());
+            event.setAmount(savedPayment.getAmount());
+            event.setPaymentTimestamp(savedPayment.getCreatedAt());
+            streamBridge.send("paymentConfirmed-out-0", event);
+            logger.info("PaymentConfirmed event published for order: {}", savedPayment.getOrderId());
+
+            // ❗ Synchronous Feign call REMOVED – now fully asynchronous
+            // orderFeignClient.confirmPayment(savedPayment.getOrderId(), paymentConfirmationDTO);
+            // logger.info("Order service notified of payment confirmation (synchronous)");
+
             return paymentMapper.mapToPaymentDTO(savedPayment);
         } catch (StripeException e) {
             logger.error("Failed to confirm payment: ", e);

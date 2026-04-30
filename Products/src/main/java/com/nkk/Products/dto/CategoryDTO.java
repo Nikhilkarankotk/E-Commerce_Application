@@ -3,10 +3,13 @@ package com.nkk.Products.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.List;
 
 @Data
+@Getter @Setter
 public class CategoryDTO {
 
     private Long categoryId;

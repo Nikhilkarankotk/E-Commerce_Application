@@ -61,15 +61,15 @@
 			<artifactId>stripe-java</artifactId>
 			<version>24.23.0-beta.1</version>
 		</dependency>
-		<!-- https://mvnrepository.com/artifact/com.paypal.sdk/paypal-core -->
-<!--		<dependency>-->
-<!--			<groupId>org.springframework.cloud</groupId>-->
-<!--			<artifactId>spring-cloud-stream</artifactId>-->
-<!--		</dependency>-->
-<!--		<dependency>-->
-<!--			<groupId>org.springframework.cloud</groupId>-->
-<!--			<artifactId>spring-cloud-stream-binder-kafka</artifactId>-->
-<!--		</dependency>-->
+<!--		 https://mvnrepository.com/artifact/com.paypal.sdk/paypal-core -->
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-stream</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-stream-binder-kafka</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>

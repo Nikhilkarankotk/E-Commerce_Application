@@ -25,16 +25,16 @@ management:
   info:
     env:
       enabled: true
-#  cloud:
-#    stream:
-#      bindings:
-#        orderCreated-out-0:
-#          destination: order-created
-#        paymentConfirmed-out-0:
-#          destination: payment-confirmed
-#      kafka:
-#        binder:
-#          brokers: localhost:9092
+
+# Kafka configuration
+spring.cloud.stream:
+  kafka:
+    binder:
+      brokers: localhost:9092   # adjust to your Kafka broker
+  bindings:
+    # Producer for PaymentConfirmed events
+    paymentConfirmed-out-0:
+      destination: payment.confirmed
 
 eureka:
   instance:

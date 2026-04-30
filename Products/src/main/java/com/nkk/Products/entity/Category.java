@@ -1,6 +1,5 @@
 package com.nkk.Products.entity;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
@@ -15,12 +14,14 @@ import java.util.List;
 @AllArgsConstructor @NoArgsConstructor
 @JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "categoryId")
 public class Category {
+    // Getters & Setters
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long categoryId;
 
     private String categoryName;
 
+    @Getter @Setter
     @ManyToOne
     @JoinColumn(name = "parent_category_id")
     private Category parentCategory;
@@ -35,5 +36,6 @@ public class Category {
 
 //    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
 //    private List<Product> products = new ArrayList<>();
+
 
 }

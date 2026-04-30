@@ -37,13 +37,13 @@ public class OrderController {
         OrderDTO orderDTO = orderService.updateOrderStatus(orderId, status);
         return new ResponseEntity<>(orderDTO, HttpStatus.OK);
     }
-    @PutMapping("/{orderId}/payment")
-    public ResponseEntity<OrderDTO> confirmPayment(
-            @PathVariable Long orderId,
-            @RequestBody PaymentConfirmationDTO paymentConfirmationDTO) {
-        OrderDTO orderDTO = orderService.confirmPayment(orderId, paymentConfirmationDTO);
-        return new ResponseEntity<>(orderDTO, HttpStatus.OK);
-    }
+//    @PutMapping("/{orderId}/payment")
+//    public ResponseEntity<OrderDTO> confirmPayment(
+//            @PathVariable Long orderId,
+//            @RequestBody PaymentConfirmationDTO paymentConfirmationDTO) {
+//        OrderDTO orderDTO = orderService.confirmPayment(orderId, paymentConfirmationDTO);
+//        return new ResponseEntity<>(orderDTO, HttpStatus.OK);
+//    }
     @GetMapping("/orderStatus/{orderId}")
     public ResponseEntity<String> orderStatusById(@RequestParam Long orderId) {
         String orderStatus = orderService.orderStatusById(orderId);

@@ -358,6 +358,11 @@ public class ProductServiceImpl implements IProductService {
         productDTO.setDescription(product.getDescription());
         productDTO.setPrice(product.getPrice());
         productDTO.setStockQuantity(product.getStockQuantity());
+        if (product.getSubCategory() != null) {
+            SubCategory subCategory = product.getSubCategory();
+            productDTO.setSubCategoryId(subCategory.getSubCategoryId());
+            productDTO.setSubCategoryName(subCategory.getSubCategoryName());
+        }
         return productDTO;
     }
 }

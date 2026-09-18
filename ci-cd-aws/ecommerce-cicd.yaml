@@ -1,0 +1,377 @@
+﻿# ==============================================================================
+# ecommerce-cicd.yaml â€” AWS CodePipeline + CodeBuild + ECR for the
+# E-Commerce Microservices repository.
+#
+# Provisioned resources:
+#   - 9 ECR repositories (one per microservice, image name = service folder)
+#   - 1 CodeBuild project (runs buildspec.yml, privileged for Docker)
+#   - 1 CodePipeline      (GitHub V2 connection -> Build -> Manual approval)
+#   - S3 artifact bucket, IAM roles, CloudWatch log group, SNS approval topic
+#
+# Steps:
+#   1. Create a GitHub connection in the AWS console:
+#      Developer Tools -> Settings -> Connections -> Create -> GitHub.
+#      Complete the "Update a pending connection" browser flow.
+#   2. Deploy (see deploy-cloudformation.sh):
+#      aws cloudformation create-stack --stack-name ecommerce-cicd \
+#        --template-body file://ecommerce-cicd.yaml \
+#        --capabilities CAPABILITY_NAMED_IAM \
+#        --parameters \
+#          ParameterKey=GitHubConnectionArn,ParameterValue=arn:aws:codestar-connections:REGION:ACCT:connection/xxxx \
+#          ParameterKey=GitHubOwner,ParameterValue=<owner> \
+#          ParameterKey=GitHubRepo,ParameterValue=E-Commerce_Application \
+#          ParameterKey=GitHubSourceBranch,ParameterValue=main
+# ==============================================================================
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "E-Commerce pipeline: CodePipeline + CodeBuild + ECR for 9 microservices"
+
+Parameters:
+  # ---------------------------------------------------------------- source
+  GitHubConnectionArn:
+    Description: ARN of the CodeStar "GitHub" connection used as the pipeline source.
+    Type: String
+  GitHubOwner:
+    Description: GitHub owner (user or org) of the application repository.
+    Type: String
+  GitHubRepo:
+    Description: GitHub repository name, e.g. E-Commerce_Application.
+    Type: String
+  GitHubSourceBranch:
+    Description: Branch the pipeline watches for source changes.
+    Type: String
+    Default: main
+
+  # --------------------------------------------------------------- build
+  BuildImage:
+    Description: CodeBuild standard runtime image (includes Java 21, Maven, Docker).
+    Type: String
+    Default: aws/codebuild/amazonlinux2-x86_64-standard:5.0
+  ComputeType:
+    Description: CodeBuild compute. SMALL is sufficient for this repo.
+    Type: String
+    Default: BUILD_GENERAL1_SMALL
+    AllowedValues: [BUILD_GENERAL1_SMALL, BUILD_GENERAL1_MEDIUM, BUILD_GENERAL1_LARGE]
+  ArtifactsBucket:
+    Description: Existing S3 bucket for CodePipeline artifacts. Empty = create a new one.
+    Type: String
+    Default: ""
+
+  # -------------------------------------------------------------- approval
+  ApprovalTopicName:
+    Description: SNS topic name for manual-approval notifications.
+    Type: String
+    Default: ecommerce-cicd-approvals
+  ApprovalNotificationEmail:
+    Description: Optional email subscribed to the approval SNS topic.
+    Type: String
+    Default: ""
+    NoEcho: true
+
+Conditions:
+  UseExistingBucket: !Not [ !Equals [ !Ref ArtifactsBucket, "" ] ]
+  SubscribeEmail: !Not [ !Equals [ !Ref ApprovalNotificationEmail, "" ] ]
+
+# -------------------------------------------------------------------------- S3
+Resources:
+  PipelineBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      # Always created; when ArtifactsBucket is provided it is simply adopted.
+      BucketName: !If
+        - UseExistingBucket
+        - !Ref ArtifactsBucket
+        - !Sub "ecommerce-cicd-artifacts-${AWS::StackName}-${AWS::AccountId}"
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+# ------------------------------------------------------------------------- ECR
+  ECRRepoProducts:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: products
+      ImageScanningConfiguration: { ScanOnPush: true }
+      ImageTagMutability: IMMUTABLE
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {"rules":[{"rulePriority":1,"description":"keep last 10","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}}]}
+  ECRRepoCarts:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: carts
+      ImageScanningConfiguration: { ScanOnPush: true }
+      ImageTagMutability: IMMUTABLE
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {"rules":[{"rulePriority":1,"description":"keep last 10","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}}]}
+  ECRRepoEurekaServer:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: eurekaserver
+      ImageScanningConfiguration: { ScanOnPush: true }
+      ImageTagMutability: IMMUTABLE
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {"rules":[{"rulePriority":1,"description":"keep last 10","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}}]}
+  ECRRepoGatewayServer:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: gatewayserver
+      ImageScanningConfiguration: { ScanOnPush: true }
+      ImageTagMutability: IMMUTABLE
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {"rules":[{"rulePriority":1,"description":"keep last 10","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}}]}
+  ECRRepoMessage:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: message
+      ImageScanningConfiguration: { ScanOnPush: true }
+      ImageTagMutability: IMMUTABLE
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {"rules":[{"rulePriority":1,"description":"keep last 10","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}}]}
+  ECRRepoOrders:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: orders
+      ImageScanningConfiguration: { ScanOnPush: true }
+      ImageTagMutability: IMMUTABLE
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {"rules":[{"rulePriority":1,"description":"keep last 10","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}}]}
+  ECRRepoPayments:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: payments
+      ImageScanningConfiguration: { ScanOnPush: true }
+      ImageTagMutability: IMMUTABLE
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {"rules":[{"rulePriority":1,"description":"keep last 10","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}}]}
+  ECRRepoShippings:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: shippings
+      ImageScanningConfiguration: { ScanOnPush: true }
+      ImageTagMutability: IMMUTABLE
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {"rules":[{"rulePriority":1,"description":"keep last 10","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}}]}
+  ECRRepoUsers:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: users
+      ImageScanningConfiguration: { ScanOnPush: true }
+      ImageTagMutability: IMMUTABLE
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {"rules":[{"rulePriority":1,"description":"keep last 10","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}}]}
+
+# ------------------------------------------------------------------- logging
+  CodeBuildLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/codebuild/${AWS::StackName}-build"
+      RetentionInDays: 7
+
+# -------------------------------------------------------------- IAM: CodeBuild
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser
+      Policies:
+        - PolicyName: codebuild-core
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [logs:CreateLogGroup, logs:CreateLogStream, logs:PutLogEvents]
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${AWS::StackName}-build:*"
+              - Effect: Allow
+                Action: [s3:GetObject, s3:GetObjectVersion, s3:PutObject]
+                Resource: !If
+                  - UseExistingBucket
+                  - !Sub "arn:aws:s3:::${ArtifactsBucket}/*"
+                  - !Sub "arn:aws:s3:::${PipelineBucket}/*"
+              - Effect: Allow
+                Action:
+                  - ecr:GetAuthorizationToken
+                  - ecr:BatchGetImage
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:PutImage
+                  - ecr:InitiateLayerUpload
+                  - ecr:UploadLayerPart
+                  - ecr:CompleteLayerUpload
+                Resource: [ "*", !Sub "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/*" ]
+              - Effect: Allow
+                Action: [ssm:GetParameters, ssm:GetParameter]
+                Resource: !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/ecommerce/*"
+
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub "${AWS::StackName}-build"
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      EncryptionKey: alias/aws/s3
+      Artifacts:
+        Type: NO_ARTIFACTS
+      Source:
+        Type: NO_SOURCE
+        BuildSpec: buildspec.yml
+      Cache:
+        Type: NO_CACHE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: !Ref ComputeType
+        Image: !Ref BuildImage
+        ImagePullCredentialsType: CODEBUILD
+        PrivilegedMode: true
+        EnvironmentVariables:
+          - Name: REPOSITORY_URI
+            Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com"
+          - Name: AWS_DEFAULT_REGION
+            Value: !Ref "AWS::Region"
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Ref CodeBuildLogGroup
+          StreamName: build
+      TimeoutInMinutes: 60
+      QueuedTimeoutInMinutes: 5
+      ConcurrentBuildLimit: 1
+
+# ------------------------------------------------------------ approval + SNS
+  ApprovalTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Ref ApprovalTopicName
+      Subscription:
+        - !If
+            - SubscribeEmail
+            - Protocol: email
+              Endpoint: !Ref ApprovalNotificationEmail
+            - !Ref "AWS::NoValue"
+
+  ApprovalTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [ !Ref ApprovalTopic ]
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref ApprovalTopic
+
+# -------------------------------------------------------- IAM: CodePipeline
+  PipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSCodePipeline_FullAccess
+      Policies:
+        - PolicyName: codepipeline-core
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [s3:GetObject, s3:GetObjectVersion, s3:PutObject, s3:ListBucket]
+                Resource:
+                  - !If
+                    - UseExistingBucket
+                    - !Sub "arn:aws:s3:::${ArtifactsBucket}"
+                    - !Sub "arn:aws:s3:::${PipelineBucket}"
+                  - !If
+                    - UseExistingBucket
+                    - !Sub "arn:aws:s3:::${ArtifactsBucket}/*"
+                    - !Sub "arn:aws:s3:::${PipelineBucket}/*"
+              - Effect: Allow
+                Action: codestar-connections:UseConnection
+                Resource: !Ref GitHubConnectionArn
+              - Effect: Allow
+                Action: codebuild:StartBuild
+                Resource: !GetAtt CodeBuildProject.Arn
+
+# ---------------------------------------------------------------- pipeline
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      RoleArn: !GetAtt PipelineRole.Arn
+      ArtifactStore:
+        Type: S3
+        Location: !If [UseExistingBucket, !Ref ArtifactsBucket, !Ref PipelineBucket]
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: Source
+              ActionTypeId: { Category: Source, Owner: AWS, Provider: CodeStarSourceConnection, Version: "1" }
+              OutputArtifacts: [ { Name: SourceArtifact } ]
+              Configuration:
+                ConnectionArn: !Ref GitHubConnectionArn
+                FullRepositoryId: !Sub "${GitHubOwner}/${GitHubRepo}"
+                BranchName: !Ref GitHubSourceBranch
+                OutputArtifactFormat: CODE_ZIP
+        - Name: Build
+          Actions:
+            - Name: BuildImages
+              ActionTypeId: { Category: Build, Owner: AWS, Provider: CodeBuild, Version: "1" }
+              InputArtifacts: [ { Name: SourceArtifact } ]
+              OutputArtifacts: [ { Name: BuildArtifact } ]
+              Configuration:
+                ProjectName: !Ref CodeBuildProject
+        - Name: Approval
+          Actions:
+            - Name: ManualApproval
+              ActionTypeId: { Category: Approval, Owner: AWS, Provider: Manual, Version: "1" }
+              Configuration:
+                NotificationArn: !Ref ApprovalTopic
+                CustomData: !Sub "Approve image push for ${GitHubRepo}@${GitHubSourceBranch}? Review ECR: ${AWS::Region}."
+
+# ---------------------------------------------------------------------- output
+Outputs:
+  PipelineUrl:
+    Description: CodePipeline console URL
+    Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/codesuite/codepipeline/pipelines/${Pipeline}/view"
+  BuildProject:
+    Description: CodeBuild project name
+    Value: !Ref CodeBuildProject
+  S3Artifacts:
+    Description: Artifacts bucket used by the pipeline
+    Value: !If [ UseExistingBucket, !Ref ArtifactsBucket, !Ref PipelineBucket ]
+  RepositoryUris:
+    Description: "ECR image repository URIs per service (lower-case)"
+    Value: !Sub >
+      ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/products,
+      ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/carts,
+      ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/eurekaserver,
+      ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/gatewayserver,
+      ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/message,
+      ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/orders,
+      ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/payments,
+      ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/shippings,
+      ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/users

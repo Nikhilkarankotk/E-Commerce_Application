@@ -24,3 +24,9 @@ build/
 .env
 application.yml
 config/secrets.yml
+
+# Local-only CI/CD & container files
+.env.local
+ci-cd-aws/.env
+**/.env
+!.env.example

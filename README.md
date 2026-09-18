@@ -144,6 +144,33 @@ cd [ServiceName]
 mvn spring-boot:run
 ```
 
+## CI/CD (AWS CodePipeline + CodeBuild)
+
+The repository ships a complete AWS CI/CD setup that builds and unit-tests every
+service, builds Docker images, and pushes them to Amazon ECR. See
+[`ci-cd-aws/README.md`](ci-cd-aws/README.md) for the full guide — the short
+version:
+
+```bash
+# 1. Create a CodeStar "GitHub" connection in the AWS console, then:
+./ci-cd-aws/deploy-cloudformation.sh create \
+  --connection-arn arn:aws:codestar-connections:REGION:ACCT:connection/xxxx \
+  --owner <owner> --repo E-Commerce_Application --branch main
+
+# 2. Push to the branch (or click "Release change") — the pipeline builds a
+#    Docker image per service and pushes it to ECR.
+```
+
+Key pieces: [`buildspec.yml`](buildspec.yml) (CodeBuild definition),
+[`ci-cd-aws/ecommerce-cicd.yaml`](ci-cd-aws/ecommerce-cicd.yaml)
+(CloudFormation: CodePipeline/CodeBuild/ECR/IAM/SNS),
+[`ci-cd-aws/docker/build-push-docker.sh`](ci-cd-aws/docker/build-push-docker.sh)
+(image build+push helper), and a shared two-stage Docker recipe template
+([`ci-cd-aws/docker/SharedDockerfile`](ci-cd-aws/docker/SharedDockerfile)) that
+generates each service's `Dockerfile`. A
+[`docker-compose.yml`](ci-cd-aws/docker-compose.yml) runs the published images
+end-to-end locally.
+
 ## API Access
 
 All API requests should go through the Gateway Server at `http://localhost:9050`

@@ -1,0 +1,86 @@
+# ==============================================================================
+# buildspec.yml — AWS CodeBuild build definition for the E-Commerce platform
+#
+# Runs for every push/PR on the configured source repo (see ci-cd-aws pipeline
+# CloudFormation template). Two phases:
+#   1. Maven build + unit tests   -> all backend services compiled & tested
+#   2. Docker build + push        -> every service image pushed to Amazon ECR
+#
+# Environment blueprint (provisioned by ci-cd-aws template, tweakable in CLI):
+#   COMPUTE:                      BUILD_GENERAL1_SMALL, privileged: true
+#   IMAGE (runtime):              aws/codebuild/amazonlinux2-x86_64-standard:5.0
+#   ENV VARS:                     REPOSITORY_URI=<ecr-domain>/<prefix>-app
+#                                 AWS_DEFAULT_REGION / AWS_REGION (inherited)
+#   SSM PARAMS (optional):        /ecommerce/stripe/secret-key,
+#                                 /ecommerce/stripe/publishable-key
+#   (fetched with ssm:get-parameter in phase 2; safe to be absent)
+# ==============================================================================
+
+version: 0.2
+
+env:
+  # NOTE: Stripe keys are intentionally NOT listed under parameter-store — an
+  # unconditional parameter-store reference fails the whole build if a key does
+  # not exist yet. They are fetched optionally in the build phase instead.
+  variables:
+    DOCKER_BUILDKIT: "1"
+
+phases:
+  install:
+    runtime-versions:
+      java: corretto21
+      docker: 20
+    commands:
+      - echo "[install] Phase begin"
+      - java -version
+      - mvn -version
+
+  pre_build:
+    commands:
+      - echo "[pre_build] Resolving registry metadata"
+      - ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+      - REGION_DEFAULT=$(aws configure get region || true)
+      - REGION=${AWS_DEFAULT_REGION:-${AWS_REGION:-${REGION_DEFAULT:-us-east-1}}}
+      - COMMIT_HASH=$CODEBUILD_RESOLVED_SOURCE_VERSION
+      - SHORT_HASH=${COMMIT_HASH:0:12}
+      - REGISTRY_URI=${REPOSITORY_URI:-$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com}
+      - BUILD_TAG=${CODEBUILD_BUILD_ID#*:}
+      - IMAGE_TAG="${SHORT_HASH:-${BUILD_TAG:-latest}}"
+      - echo "registry=$REGISTRY_URI region=$REGION tag=$IMAGE_TAG"
+
+  build:
+    commands:
+      - echo "[build] Compiling and unit-testing every service (phase 1)"
+      - for service in */; do
+          if [ -f "$service/pom.xml" ] && [ -f "$service/Dockerfile" ]; then
+            echo "---- $service ----";
+            if [ -f "$service/.mvn/wrapper/maven-wrapper.properties" ] && [ -x "$service/mvnw" ]; then
+              echo "using ./mvnw wrapper";
+              (cd "$service" && ./mvnw -q -B test) || { echo "mvnw failed for $service" >&2; exit 1; };
+            else
+              echo "using system mvn";
+              (cd "$service" && mvn -q -B test) || { echo "mvn failed for $service" >&2; exit 1; };
+            fi;
+          fi;
+        done
+
+      - echo "[build] Docker build + push every service (phase 2)"
+      - chmod +x ci-cd-aws/docker/build-push-docker.sh
+      - EXTRA_BUILD_ARGS=()
+      - STRIPE_SECRET_KEY=$(aws ssm get-parameter --name /ecommerce/stripe/secret-key --with-decryption --query Parameter.Value --output text 2>/dev/null || true)
+      - STRIPE_PUBLISHABLE_KEY=$(aws ssm get-parameter --name /ecommerce/stripe/publishable-key --with-decryption --query Parameter.Value --output text 2>/dev/null || true)
+      - if [ -n "${STRIPE_SECRET_KEY}" ]; then EXTRA_BUILD_ARGS+=( --build-arg STRIPE_SECRET_KEY="$STRIPE_SECRET_KEY" ); fi
+      - if [ -n "${STRIPE_PUBLISHABLE_KEY}" ]; then EXTRA_BUILD_ARGS+=( --build-arg STRIPE_PUBLISHABLE_KEY="$STRIPE_PUBLISHABLE_KEY" ); fi
+      - ./ci-cd-aws/docker/build-push-docker.sh "$REGISTRY_URI" "$REGION" "$IMAGE_TAG" "${EXTRA_BUILD_ARGS[@]:-}"
+
+  post_build:
+    commands:
+      - echo "[post_build] Recording build receipt"
+      - printenv | grep -E '^CODEBUILD_|^IMAGE_TAG|^REGISTRY_URI' > build-receipt.env || true
+      - cat build-receipt.env
+
+artifacts:
+  # Machine-readable receipt of what was pushed; keeps the artifact S3 bucket small.
+  files:
+    - build-receipt.env
+  discard-paths: yes

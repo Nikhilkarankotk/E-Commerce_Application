@@ -1,0 +1,190 @@
+# ==============================================================================
+# docker-compose.yml — run the full microservices platform from the images the
+# CI/CD pipeline publishes to ECR.
+#
+# Usage:
+#   1. cp .env.example .env   (fill STRIPE_* and any overrides)
+#   2. docker compose up -d
+#   3. Health:  http://localhost:8070/actuator/health  (Eureka dashboard :8070)
+#      Gateway routes through http://localhost:9050
+#
+# To consume freshly-built pipeline images instead of local ones, set
+# IMAGE_TAG (github short-sha) and optionally REGISTRY in the environment and
+# re-run `docker compose up -d --pull always`.
+# ==============================================================================
+
+x-service-defaults: &defaults
+  restart: unless-stopped
+  env_file: .env
+  depends_on:
+    eureka:
+      condition: service_healthy
+
+services:
+  # --- Service discovery -------------------------------------------------------
+  eureka:
+    image: ${REGISTRY:-localhost:5000}/eurekaserver:${IMAGE_TAG:-latest}
+    build:
+      context: ../EurekaServer
+      dockerfile: ../EurekaServer/Dockerfile
+    container_name: ecommerce-eureka
+    ports:
+      - "8070:8070"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8070/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  # --- API gateway ------------------------------------------------------------
+  gateway:
+    <<: *defaults
+    image: ${REGISTRY:-localhost:5000}/gatewayserver:${IMAGE_TAG:-latest}
+    build:
+      context: ../GatewayServer
+      dockerfile: ../GatewayServer/Dockerfile
+    container_name: ecommerce-gateway
+    ports:
+      - "9050:9050"
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://eureka:8070/eureka/"
+      # Point at the Keycloak realm exposed to this compose network.
+      KEYCLOAK_JWK_SET_URI: ${KEYCLOAK_JWK_SET_URI:-http://keycloak:7080/realms/master/protocol/openid-connect/certs}
+    depends_on:
+      eureka:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9050/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  # --- Core services (registered with Eureka) ----------------------------------
+  products:
+    <<: *defaults
+    image: ${REGISTRY:-localhost:5000}/products:${IMAGE_TAG:-latest}
+    build:
+      context: ../Products
+      dockerfile: ../Products/Dockerfile
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  carts:
+    <<: *defaults
+    image: ${REGISTRY:-localhost:5000}/carts:${IMAGE_TAG:-latest}
+    build:
+      context: ../Carts
+      dockerfile: ../Carts/Dockerfile
+    ports:
+      - "8090:8090"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8090/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  orders:
+    <<: *defaults
+    image: ${REGISTRY:-localhost:5000}/orders:${IMAGE_TAG:-latest}
+    build:
+      context: ../Orders
+      dockerfile: ../Orders/Dockerfile
+    ports:
+      - "9010:9010"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9010/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  shippings:
+    <<: *defaults
+    image: ${REGISTRY:-localhost:5000}/shippings:${IMAGE_TAG:-latest}
+    build:
+      context: ../Shippings
+      dockerfile: ../Shippings/Dockerfile
+    ports:
+      - "9020:9020"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9020/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  payments:
+    <<: *defaults
+    image: ${REGISTRY:-localhost:5000}/payments:${IMAGE_TAG:-latest}
+    build:
+      context: ../Payments
+      dockerfile: ../Payments/Dockerfile
+    ports:
+      - "9030:9030"
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://eureka:8070/eureka/"
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:?set STRIPE_SECRET_KEY in .env}
+      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:?set STRIPE_PUBLISHABLE_KEY in .env}
+      STRIPE_PUBLIC_KEY: ${STRIPE_PUBLIC_KEY:-}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9030/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  users:
+    <<: *defaults
+    image: ${REGISTRY:-localhost:5000}/users:${IMAGE_TAG:-latest}
+    build:
+      context: ../Users
+      dockerfile: ../Users/Dockerfile
+    ports:
+      - "9040:9040"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9040/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  message:
+    <<: *defaults
+    image: ${REGISTRY:-localhost:5000}/message:${IMAGE_TAG:-latest}
+    build:
+      context: ../Message
+      dockerfile: ../Message/Dockerfile
+    ports:
+      - "9060:9060"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9060/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  # --- Identity / auth ---------------------------------------------------------
+  # Optional; the gateway can also point at any externally-hosted Keycloak via
+  # KEYCLOAK_JWK_SET_URI.
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    command: ["start-dev", "--http-port", "7080"]
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_REALM: master
+    ports:
+      - "7080:7080"
+    container_name: ecommerce-keycloak
+    profiles: ["keycloak"]

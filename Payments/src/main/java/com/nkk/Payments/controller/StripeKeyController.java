@@ -10,7 +10,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/stripe")
 public class StripeKeyController {
 
-    @Value("${STRIPE_PUBLIC_KEY}")
+    // Defaults to empty so builds / context-load tests succeed without keys;
+    // Stripe publishes the public key to clients at runtime via env var.
+    @Value("${STRIPE_PUBLIC_KEY:}")
     private String publishableKey;
 
     @GetMapping("/public-key")

@@ -1,0 +1,16 @@
+﻿# Local build artifacts (keep docker build context lean)
+.git
+.gitignore
+.gitattributes
+Dockerfile
+ci-cd-aws
+target
+build
+*.log
+.idea
+*.iml
+.mvn
+mvnw
+mvnw.cmd
+.DS_Store
+.env

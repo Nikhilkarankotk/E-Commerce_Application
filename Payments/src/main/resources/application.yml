@@ -51,5 +51,8 @@ info:
     version: "1.0.0"
 
 stripe:
-  secret-key : ${STRIPE_SECRET_KEY}
-  publishable-key: ${STRIPE_PUBLISHABLE_KEY}
+  # Injected at runtime (env vars / containers / CI secrets). Defaults to empty so
+  # that builds and context-load tests succeed without real keys; calls to the
+  # Stripe API will fail explicitly at runtime if keys are missing.
+  secret-key : ${STRIPE_SECRET_KEY:}
+  publishable-key: ${STRIPE_PUBLISHABLE_KEY:}
